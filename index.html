@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FoxEarn - TON Mining</title>
+    <meta name="monetag" content="5791403ed518a070d261ecbcadd50e42">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -66,8 +67,6 @@
         .plan-card .plan-stats { display: flex; gap: 20px; font-size: 13px; color: #888; margin-bottom: 10px; }
         .plan-card .plan-stats span { color: #4fc3f7; font-weight: bold; }
         .plan-card .buy-btn { background: #0088cc; color: white; border: none; padding: 12px; border-radius: 20px; width: 100%; cursor: pointer; font-weight: bold; font-size: 14px; }
-        
- Sleeper's ad-card styles continue...
         
         .ad-card { background: linear-gradient(135deg, #f093fb, #f5576c); padding: 15px; border-radius: 15px; text-align: center; cursor: pointer; margin-bottom: 15px; font-weight: bold; font-size: 16px; }
         
@@ -189,12 +188,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
 
-    <!-- AdSterra Ad -->
-    <script type="text/javascript" src="//www.your-adsterra-link.com/ads.js"></script>
-
-    <!-- Monetag Ad -->
-    <script src="https://your-monetag-link.com/script.js"></script>
-
     <script>
         // ============================================
         // FOXEARN - FIREBASE INTEGRATION
@@ -305,7 +298,6 @@
             db.collection('settings').doc('global').get().then(function(doc) {
                 if(doc.exists) {
                     const cloudSettings = doc.data();
-                    // Merge with defaults
                     if(cloudSettings.miningSpeed) SETTINGS.miningSpeed = cloudSettings.miningSpeed;
                     if(cloudSettings.adReward) SETTINGS.adReward = cloudSettings.adReward;
                     if(cloudSettings.referralPercent) SETTINGS.referralPercent = cloudSettings.referralPercent;
@@ -313,37 +305,23 @@
                     if(cloudSettings.minWithdraw) SETTINGS.minWithdraw = cloudSettings.minWithdraw;
                     if(cloudSettings.plans) SETTINGS.plans = cloudSettings.plans;
                     if(cloudSettings.tasks) SETTINGS.tasks = cloudSettings.tasks;
-                    console.log('✅ Settings loaded from cloud');
                 } else {
-                    // Save default settings to cloud
                     db.collection('settings').doc('global').set(SETTINGS);
                 }
                 if(!userData.id) return;
                 initApp();
             }).catch(function(e) {
-                console.log('Settings error:', e);
                 if(!userData.id) return;
                 initApp();
             });
         }
         
-        // Fallback: start without Firebase
         function startAppLocal() {
             if(userData.id) return;
             userData = {
-                id: 'local_' + Date.now(),
-                username: 'Miner',
-                tonBalance: 0,
-                hashrate: 10,
-                totalEarned: 0,
-                todayEarned: 0,
-                referrals: 0,
-                referralEarnings: 0,
-                completedTasks: [],
-                purchasedPlans: [],
-                miningSeconds: 0,
-                transactions: [],
-                blocked: false
+                id: 'local_' + Date.now(), username: 'Miner', tonBalance: 0, hashrate: 10,
+                totalEarned: 0, todayEarned: 0, referrals: 0, referralEarnings: 0,
+                completedTasks: [], purchasedPlans: [], miningSeconds: 0, transactions: [], blocked: false
             };
             const savedSettings = localStorage.getItem('foxearn_ton_settings');
             if(savedSettings) SETTINGS = {...SETTINGS, ...JSON.parse(savedSettings)};
@@ -351,35 +329,18 @@
         }
         
         function saveUserData() {
-            if(currentUser) {
-                saveUserToCloud();
-            } else {
-                localStorage.setItem('foxearn_ton_user', JSON.stringify(userData));
-            }
+            if(currentUser) { saveUserToCloud(); }
+            else { localStorage.setItem('foxearn_ton_user', JSON.stringify(userData)); }
         }
         
-        // ============================================
-        // INIT APP
-        // ============================================
         function initApp() {
-            showPage('home');
-            updateAllUI();
-            renderTasks();
-            renderPlans();
-            renderHistory();
+            showPage('home'); updateAllUI(); renderTasks(); renderPlans(); renderHistory();
             setInterval(() => {
                 const today = new Date().getDate();
-                if(today !== lastDayReset) {
-                    userData.todayEarned = 0;
-                    lastDayReset = today;
-                    saveUserData();
-                }
+                if(today !== lastDayReset) { userData.todayEarned = 0; lastDayReset = today; saveUserData(); }
             }, 60000);
         }
         
-        // ============================================
-        // NAVIGATION
-        // ============================================
         function showPage(name) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             var pageEl = document.getElementById(name + 'Page');
@@ -397,14 +358,9 @@
             }
         }
         
-        // ============================================
-        // UPDATE UI
-        // ============================================
         function updateAllUI() {
             var bal = userData.tonBalance.toFixed(7);
-            setText('tonBalance', bal);
-            setText('headerBalance', bal);
-            setText('walletBalance', bal);
+            setText('tonBalance', bal); setText('headerBalance', bal); setText('walletBalance', bal);
             setText('usdValue', (userData.tonBalance * SETTINGS.tonPrice).toFixed(2));
             setText('walletUsd', (userData.tonBalance * SETTINGS.tonPrice).toFixed(2));
             setText('hashrateDisplay', userData.hashrate + ' H/s');
@@ -419,29 +375,19 @@
             setText('refEarnings', userData.referralEarnings.toFixed(7) + ' TON');
         }
         
-        function setText(id, value) {
-            var el = document.getElementById(id);
-            if(el) el.textContent = value;
-        }
+        function setText(id, value) { var el = document.getElementById(id); if(el) el.textContent = value; }
         
-        // ============================================
-        // MINING
-        // ============================================
         function toggleMining() { if(isMining) stopMining(); else startMining(); }
         
         function startMining() {
             isMining = true;
             var mineBtn = document.getElementById('mineBtn');
-            mineBtn.textContent = '⏹ STOP MINING';
-            mineBtn.className = 'btn btn-stop';
+            mineBtn.textContent = '⏹ STOP MINING'; mineBtn.className = 'btn btn-stop';
             var ratePerSec = (userData.hashrate * SETTINGS.miningSpeed) / 86400;
             miningInterval = setInterval(function() {
-                userData.tonBalance += ratePerSec;
-                userData.totalEarned += ratePerSec;
-                userData.todayEarned += ratePerSec;
+                userData.tonBalance += ratePerSec; userData.totalEarned += ratePerSec; userData.todayEarned += ratePerSec;
                 var bal = userData.tonBalance.toFixed(7);
-                setText('tonBalance', bal);
-                setText('headerBalance', bal);
+                setText('tonBalance', bal); setText('headerBalance', bal);
                 setText('todayEarnedDisplay', userData.todayEarned.toFixed(7));
                 setText('totalEarnedDisplay', userData.totalEarned.toFixed(7));
                 setText('usdValue', (userData.tonBalance * SETTINGS.tonPrice).toFixed(2));
@@ -452,36 +398,23 @@
             timerInterval = setInterval(function() {
                 miningSeconds++;
                 var el = document.getElementById('miningTimer');
-                if(el) el.textContent = 
-                    Math.floor(miningSeconds/3600).toString().padStart(2,'0')+':'+
-                    Math.floor((miningSeconds%3600)/60).toString().padStart(2,'0')+':'+
-                    (miningSeconds%60).toString().padStart(2,'0');
+                if(el) el.textContent = Math.floor(miningSeconds/3600).toString().padStart(2,'0')+':'+Math.floor((miningSeconds%3600)/60).toString().padStart(2,'0')+':'+(miningSeconds%60).toString().padStart(2,'0');
             }, 1000);
         }
         
         function stopMining() {
-            isMining = false;
-            clearInterval(miningInterval);
-            clearInterval(timerInterval);
+            isMining = false; clearInterval(miningInterval); clearInterval(timerInterval);
             var mineBtn = document.getElementById('mineBtn');
-            mineBtn.textContent = '▶ START MINING';
-            mineBtn.className = 'btn btn-start';
-            saveUserData();
+            mineBtn.textContent = '▶ START MINING'; mineBtn.className = 'btn btn-start'; saveUserData();
         }
         
-        // ============================================
-        // WATCH AD
-        // ============================================
         function watchAd() {
             showToast('📺 Loading ad...');
             var adCard = document.querySelector('.ad-card');
             if(adCard) { adCard.style.opacity = '0.5'; adCard.style.pointerEvents = 'none'; }
             setTimeout(function() {
-                userData.tonBalance += SETTINGS.adReward;
-                userData.totalEarned += SETTINGS.adReward;
-                userData.todayEarned += SETTINGS.adReward;
-                saveUserData();
-                updateAllUI();
+                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                saveUserData(); updateAllUI();
                 showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
                 if(adCard) { adCard.style.opacity = '1'; adCard.style.pointerEvents = 'auto'; }
             }, 3000);
@@ -492,19 +425,13 @@
             var banner = document.querySelector('.tasks-ad-banner');
             if(banner) { banner.style.opacity = '0.5'; banner.style.pointerEvents = 'none'; }
             setTimeout(function() {
-                userData.tonBalance += SETTINGS.adReward;
-                userData.totalEarned += SETTINGS.adReward;
-                userData.todayEarned += SETTINGS.adReward;
-                saveUserData();
-                updateAllUI();
+                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                saveUserData(); updateAllUI();
                 showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
                 if(banner) { banner.style.opacity = '1'; banner.style.pointerEvents = 'auto'; }
             }, 3000);
         }
         
-        // ============================================
-        // TASKS
-        // ============================================
         function renderTasks() {
             var container = document.getElementById('tasksList');
             if(!container) return;
@@ -526,15 +453,11 @@
             if(userData.completedTasks.includes(id)) return;
             var task = SETTINGS.tasks.find(function(t) { return t.id === id; });
             if(!task) return;
-            
             if(task.isAdTask) {
                 showToast('📺 Loading ad...');
-                setTimeout(function() {
-                    giveTaskReward(task);
-                }, 3000);
+                setTimeout(function() { giveTaskReward(task); }, 3000);
                 return;
             }
-            
             if(task.link) window.open(task.link, '_blank');
             giveTaskReward(task);
         }
@@ -542,25 +465,11 @@
         function giveTaskReward(task) {
             userData.completedTasks.push(task.id);
             var msg = '✅ ';
-            if(task.rewardTon > 0) {
-                userData.tonBalance += task.rewardTon;
-                userData.totalEarned += task.rewardTon;
-                userData.todayEarned += task.rewardTon;
-                msg += '+' + task.rewardTon + ' TON ';
-            }
-            if(task.rewardHash > 0) {
-                userData.hashrate += task.rewardHash;
-                msg += '+' + task.rewardHash + ' H/s';
-            }
-            saveUserData();
-            updateAllUI();
-            renderTasks();
-            showToast(msg);
+            if(task.rewardTon > 0) { userData.tonBalance += task.rewardTon; userData.totalEarned += task.rewardTon; userData.todayEarned += task.rewardTon; msg += '+' + task.rewardTon + ' TON '; }
+            if(task.rewardHash > 0) { userData.hashrate += task.rewardHash; msg += '+' + task.rewardHash + ' H/s'; }
+            saveUserData(); updateAllUI(); renderTasks(); showToast(msg);
         }
         
-        // ============================================
-        // PLANS
-        // ============================================
         function renderPlans() {
             var container = document.getElementById('plansList');
             if(!container) return;
@@ -578,18 +487,12 @@
             if(!plan) return;
             if(userData.tonBalance < plan.price) return showToast('❌ Not enough TON!');
             if(confirm('Buy ' + plan.name + ' for ' + plan.price + ' TON?')) {
-                userData.tonBalance -= plan.price;
-                userData.hashrate += plan.hashrate;
-                userData.purchasedPlans.push(id);
-                saveUserData();
-                updateAllUI();
+                userData.tonBalance -= plan.price; userData.hashrate += plan.hashrate;
+                userData.purchasedPlans.push(id); saveUserData(); updateAllUI();
                 showToast('✅ +' + plan.hashrate + ' H/s!');
             }
         }
         
-        // ============================================
-        // WALLET
-        // ============================================
         function submitWithdraw() {
             var addr = document.getElementById('withdrawAddress').value.trim();
             var amt = parseFloat(document.getElementById('withdrawAmount').value);
@@ -600,11 +503,8 @@
                 userData.tonBalance -= amt;
                 userData.transactions.push({ type:'withdraw', amount:amt, address:addr, date:new Date().toLocaleString(), status:'pending' });
                 if(isMining) stopMining();
-                saveUserData();
-                updateAllUI();
-                renderHistory();
-                document.getElementById('withdrawAddress').value = '';
-                document.getElementById('withdrawAmount').value = '';
+                saveUserData(); updateAllUI(); renderHistory();
+                document.getElementById('withdrawAddress').value = ''; document.getElementById('withdrawAmount').value = '';
                 showToast('✅ Submitted!');
             }
         }
@@ -618,10 +518,7 @@
         function renderHistory() {
             var c = document.getElementById('txHistory');
             if(!c) return;
-            if(!userData.transactions || userData.transactions.length === 0) {
-                c.innerHTML = '<p style="color:#888;">No transactions</p>';
-                return;
-            }
+            if(!userData.transactions || userData.transactions.length === 0) { c.innerHTML = '<p style="color:#888;">No transactions</p>'; return; }
             c.innerHTML = userData.transactions.slice(-10).reverse().map(function(tx) {
                 return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #2a2a4a;font-size:12px;">' +
                     '<span>' + (tx.type==='withdraw'?'💸':'💰') + '</span>' +
@@ -637,11 +534,8 @@
         }
         
         function showToast(msg) {
-            var t = document.createElement('div');
-            t.className = 'toast';
-            t.textContent = msg;
-            document.body.appendChild(t);
-            setTimeout(function() { t.remove(); }, 2500);
+            var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+            document.body.appendChild(t); setTimeout(function() { t.remove(); }, 2500);
         }
     </script>
 </body>
