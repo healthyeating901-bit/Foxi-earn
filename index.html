@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+here<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -147,7 +147,7 @@
                 <h3>👥 Refer & Earn</h3>
                 <p style="color:#888;margin:10px 0;">Get <b style="color:#0088cc;" id="refBonus">10%</b> of referrals' earnings</p>
                 <div class="ref-box">
-                    <input type="text" id="refLink" value="https://t.me/FoxEarnBot?start=user123" readonly>
+                    <input type="text" id="refLink" readonly>
                     <button onclick="copyRef()">📋 Copy</button>
                 </div>
             </div>
@@ -168,7 +168,8 @@
             </div>
             <div class="card"><h3>💰 Deposit</h3>
                 <p style="color:#888;font-size:13px;margin-bottom:10px;">Send TON to:</p>
-                <div class="ref-box"><input type="text" value="UQD...YourWallet" readonly><button onclick="copyDeposit()">📋</button></div>
+                <div class="ref-box"><input type="text" id="depositAddressDisplay" readonly><button onclick="copyDeposit()">📋</button></div>
+                <button class="btn btn-ton" onclick="openTonWallet()" style="margin-bottom:8px;">💎 Open TON Wallet</button>
                 <button class="btn btn-ton" onclick="depositStars()">⭐ Deposit Stars</button>
             </div>
             <div class="card"><h3>📜 History</h3><div id="txHistory"><p style="color:#888;">No transactions</p></div></div>
@@ -196,7 +197,6 @@
         // FOXEARN - FIREBASE INTEGRATION
         // ============================================
         
-        // Your Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDldvyBpQK95cyvzE267boV5HfOLJLTn2Q",
             authDomain: "foxiearn.firebaseapp.com",
@@ -206,7 +206,6 @@
             appId: "1:677808159330:web:db53698d8eab0a9cd5ef3b"
         };
         
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
@@ -214,7 +213,7 @@
         let currentUser = null;
         let userData = {};
         
-        // AdsGram instance
+        // AdsGram
         let adsgramInstance = null;
         const ADSGRAM_BLOCK_ID = '30093';
         
@@ -227,9 +226,9 @@
             }
         }
         
-        // Default settings (used if no cloud settings)
         let SETTINGS = {
             miningSpeed: 0.0001, adReward: 0.01, referralPercent: 10, tonPrice: 5.20, minWithdraw: 0.5,
+            depositAddress: 'UQD...YourWallet',   // will be overwritten from cloud
             plans: [
                 { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0050000 TON', icon:'🥉' },
                 { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0500000 TON', icon:'🥈' },
@@ -247,131 +246,81 @@
         let isMining = false, miningInterval = null, timerInterval = null, miningSeconds = 0, lastDayReset = new Date().getDate();
         
         // ============================================
-        // AUTH - Sign in anonymously
+        // AUTH
         // ============================================
-        auth.signInAnonymously().catch(function(error) {
-            console.log("Auth error, using local mode:", error.message);
-            startAppLocal();
-        });
-        
-        auth.onAuthStateChanged(function(user) {
-            if(user) {
+        auth.signInAnonymously().catch(e => startAppLocal());
+        auth.onAuthStateChanged(user => {
+            if (user) {
                 currentUser = user;
-                console.log('✅ Signed in as:', user.uid);
                 loadUserFromCloud(user.uid);
                 loadSettingsFromCloud();
-            } else {
-                startAppLocal();
-            }
+            } else startAppLocal();
         });
         
-        // Load user data from Firestore
         function loadUserFromCloud(uid) {
-            db.collection('users').doc(uid).get().then(function(doc) {
-                if(doc.exists) {
+            db.collection('users').doc(uid).get().then(doc => {
+                if (doc.exists) {
                     userData = doc.data();
-                    // Check if blocked
-                    if(userData.blocked) {
-                        document.querySelector('.app').innerHTML = '<div style="text-align:center;padding:50px;"><h1 style="color:#f44336;">🚫 Account Blocked</h1><p>Contact admin for help.</p></div>';
+                    if (userData.blocked) {
+                        document.querySelector('.app').innerHTML = '<div style="text-align:center;padding:50px;"><h1 style="color:#f44336;">🚫 Account Blocked</h1><p>Contact admin.</p></div>';
                         return;
                     }
                 } else {
-                    // New user - create profile
                     userData = {
-                        id: uid,
-                        username: 'Miner',
-                        tonBalance: 0,
-                        hashrate: 10,
-                        totalEarned: 0,
-                        todayEarned: 0,
-                        referrals: 0,
-                        referralEarnings: 0,
-                        completedTasks: [],
-                        purchasedPlans: [],
-                        miningSeconds: 0,
-                        transactions: [],
-                        blocked: false,
+                        id: uid, username: 'Miner', tonBalance: 0, hashrate: 10, totalEarned: 0,
+                        todayEarned: 0, referrals: 0, referralEarnings: 0, completedTasks: [],
+                        purchasedPlans: [], miningSeconds: 0, transactions: [], blocked: false,
                         createdAt: new Date().toISOString()
                     };
                     saveUserToCloud();
                 }
                 initApp();
-            }).catch(function(e) {
-                console.log('Load error:', e);
-                startAppLocal();
-            });
+            }).catch(e => startAppLocal());
         }
         
-        // Save user to cloud
         function saveUserToCloud() {
-            if(!currentUser) return;
-            db.collection('users').doc(currentUser.uid).set(userData, {merge: true})
-            .catch(function(e) { console.log('Save error:', e); });
+            if (!currentUser) return;
+            db.collection('users').doc(currentUser.uid).set(userData, { merge: true }).catch(e => console.log('Save error:', e));
         }
         
-        // Load settings from cloud
         function loadSettingsFromCloud() {
-            db.collection('settings').doc('global').get().then(function(doc) {
-                if(doc.exists) {
-                    const cloudSettings = doc.data();
-                    // Merge with defaults
-                    if(cloudSettings.miningSpeed) SETTINGS.miningSpeed = cloudSettings.miningSpeed;
-                    if(cloudSettings.adReward) SETTINGS.adReward = cloudSettings.adReward;
-                    if(cloudSettings.referralPercent) SETTINGS.referralPercent = cloudSettings.referralPercent;
-                    if(cloudSettings.tonPrice) SETTINGS.tonPrice = cloudSettings.tonPrice;
-                    if(cloudSettings.minWithdraw) SETTINGS.minWithdraw = cloudSettings.minWithdraw;
-                    if(cloudSettings.plans) SETTINGS.plans = cloudSettings.plans;
-                    if(cloudSettings.tasks) SETTINGS.tasks = cloudSettings.tasks;
-                    console.log('✅ Settings loaded from cloud');
+            db.collection('settings').doc('global').get().then(doc => {
+                if (doc.exists) {
+                    const cloud = doc.data();
+                    if (cloud.miningSpeed) SETTINGS.miningSpeed = cloud.miningSpeed;
+                    if (cloud.adReward) SETTINGS.adReward = cloud.adReward;
+                    if (cloud.referralPercent) SETTINGS.referralPercent = cloud.referralPercent;
+                    if (cloud.tonPrice) SETTINGS.tonPrice = cloud.tonPrice;
+                    if (cloud.minWithdraw) SETTINGS.minWithdraw = cloud.minWithdraw;
+                    if (cloud.depositAddress) SETTINGS.depositAddress = cloud.depositAddress;
+                    if (cloud.plans) SETTINGS.plans = cloud.plans;
+                    if (cloud.tasks) SETTINGS.tasks = cloud.tasks;
                 } else {
-                    // Save default settings to cloud
                     db.collection('settings').doc('global').set(SETTINGS);
                 }
-                if(!userData.id) return;
-                initApp();
-            }).catch(function(e) {
-                console.log('Settings error:', e);
-                if(!userData.id) return;
-                initApp();
-            });
+                if (userData.id) initApp();
+            }).catch(() => { if (userData.id) initApp(); });
         }
         
-        // Fallback: start without Firebase
         function startAppLocal() {
-            if(userData.id) return;
+            if (userData.id) return;
             userData = {
-                id: 'local_' + Date.now(),
-                username: 'Miner',
-                tonBalance: 0,
-                hashrate: 10,
-                totalEarned: 0,
-                todayEarned: 0,
-                referrals: 0,
-                referralEarnings: 0,
-                completedTasks: [],
-                purchasedPlans: [],
-                miningSeconds: 0,
-                transactions: [],
-                blocked: false
+                id: 'local_' + Date.now(), username: 'Miner', tonBalance: 0, hashrate: 10,
+                totalEarned: 0, todayEarned: 0, referrals: 0, referralEarnings: 0,
+                completedTasks: [], purchasedPlans: [], miningSeconds: 0, transactions: [], blocked: false
             };
-            const savedSettings = localStorage.getItem('foxearn_ton_settings');
-            if(savedSettings) SETTINGS = {...SETTINGS, ...JSON.parse(savedSettings)};
+            const saved = localStorage.getItem('foxearn_ton_settings');
+            if (saved) SETTINGS = { ...SETTINGS, ...JSON.parse(saved) };
             initApp();
         }
         
         function saveUserData() {
-            if(currentUser) {
-                saveUserToCloud();
-            } else {
-                localStorage.setItem('foxearn_ton_user', JSON.stringify(userData));
-            }
+            if (currentUser) saveUserToCloud();
+            else localStorage.setItem('foxearn_ton_user', JSON.stringify(userData));
         }
         
-        // ============================================
-        // INIT APP
-        // ============================================
         function initApp() {
-            initAdsGram(); // Initialize AdsGram
+            initAdsGram();
             showPage('home');
             updateAllUI();
             renderTasks();
@@ -379,7 +328,7 @@
             renderHistory();
             setInterval(() => {
                 const today = new Date().getDate();
-                if(today !== lastDayReset) {
+                if (today !== lastDayReset) {
                     userData.todayEarned = 0;
                     lastDayReset = today;
                     saveUserData();
@@ -387,31 +336,25 @@
             }, 60000);
         }
         
-        // ============================================
-        // NAVIGATION
-        // ============================================
         function showPage(name) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            var pageEl = document.getElementById(name + 'Page');
-            if(pageEl) pageEl.classList.add('active');
+            const pageEl = document.getElementById(name + 'Page');
+            if (pageEl) pageEl.classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            var pages = ['home','tasks','plans','referral','wallet'];
-            var index = pages.indexOf(name);
-            if(index !== -1) {
-                var navItems = document.querySelectorAll('.nav-item');
-                if(navItems[index]) navItems[index].classList.add('active');
+            const pages = ['home','tasks','plans','referral','wallet'];
+            const index = pages.indexOf(name);
+            if (index !== -1) {
+                const navs = document.querySelectorAll('.nav-item');
+                if (navs[index]) navs[index].classList.add('active');
             }
-            if(name === 'tasks') {
-                var taskAdReward = document.getElementById('taskAdReward');
-                if(taskAdReward) taskAdReward.textContent = SETTINGS.adReward.toFixed(2);
+            if (name === 'tasks') {
+                const adRewardEl = document.getElementById('taskAdReward');
+                if (adRewardEl) adRewardEl.textContent = SETTINGS.adReward.toFixed(2);
             }
         }
         
-        // ============================================
-        // UPDATE UI
-        // ============================================
         function updateAllUI() {
-            var bal = userData.tonBalance.toFixed(7);
+            const bal = userData.tonBalance.toFixed(7);
             setText('tonBalance', bal);
             setText('headerBalance', bal);
             setText('walletBalance', bal);
@@ -427,224 +370,159 @@
             setText('refBonus', SETTINGS.referralPercent + '%');
             setText('totalRefs', userData.referrals);
             setText('refEarnings', userData.referralEarnings.toFixed(7) + ' TON');
+            
+            // Referral link
+            const refLink = document.getElementById('refLink');
+            if (refLink) refLink.value = 'https://t.me/TonFoxEarnBot?start=' + userData.id;
+            
+            // Deposit address
+            const depDisplay = document.getElementById('depositAddressDisplay');
+            if (depDisplay) depDisplay.value = SETTINGS.depositAddress || 'UQD...YourWallet';
         }
         
-        function setText(id, value) {
-            var el = document.getElementById(id);
-            if(el) el.textContent = value;
+        function setText(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
         }
         
-        // ============================================
-        // MINING
-        // ============================================
-        function toggleMining() { if(isMining) stopMining(); else startMining(); }
-        
+        // --- Mining (unchanged) ---
+        function toggleMining() { if (isMining) stopMining(); else startMining(); }
         function startMining() {
             isMining = true;
-            var mineBtn = document.getElementById('mineBtn');
-            mineBtn.textContent = '⏹ STOP MINING';
-            mineBtn.className = 'btn btn-stop';
-            var ratePerSec = (userData.hashrate * SETTINGS.miningSpeed) / 86400;
-            miningInterval = setInterval(function() {
-                userData.tonBalance += ratePerSec;
-                userData.totalEarned += ratePerSec;
-                userData.todayEarned += ratePerSec;
-                var bal = userData.tonBalance.toFixed(7);
-                setText('tonBalance', bal);
-                setText('headerBalance', bal);
+            const btn = document.getElementById('mineBtn');
+            btn.textContent = '⏹ STOP MINING'; btn.className = 'btn btn-stop';
+            const rate = (userData.hashrate * SETTINGS.miningSpeed) / 86400;
+            miningInterval = setInterval(() => {
+                userData.tonBalance += rate; userData.totalEarned += rate; userData.todayEarned += rate;
+                setText('tonBalance', userData.tonBalance.toFixed(7));
+                setText('headerBalance', userData.tonBalance.toFixed(7));
                 setText('todayEarnedDisplay', userData.todayEarned.toFixed(7));
                 setText('totalEarnedDisplay', userData.totalEarned.toFixed(7));
                 setText('usdValue', (userData.tonBalance * SETTINGS.tonPrice).toFixed(2));
-                var bar = document.getElementById('miningBar');
-                if(bar) bar.style.width = Math.min((miningSeconds % 86400) / 86400 * 100, 100) + '%';
-                if(Math.random() < 0.05) saveUserData();
+                const bar = document.getElementById('miningBar');
+                if (bar) bar.style.width = Math.min((miningSeconds % 86400) / 86400 * 100, 100) + '%';
+                if (Math.random() < 0.05) saveUserData();
             }, 1000);
-            timerInterval = setInterval(function() {
+            timerInterval = setInterval(() => {
                 miningSeconds++;
-                var el = document.getElementById('miningTimer');
-                if(el) el.textContent = 
-                    Math.floor(miningSeconds/3600).toString().padStart(2,'0')+':'+
-                    Math.floor((miningSeconds%3600)/60).toString().padStart(2,'0')+':'+
-                    (miningSeconds%60).toString().padStart(2,'0');
+                const el = document.getElementById('miningTimer');
+                if (el) el.textContent = Math.floor(miningSeconds/3600).toString().padStart(2,'0')+':'+Math.floor((miningSeconds%3600)/60).toString().padStart(2,'0')+':'+(miningSeconds%60).toString().padStart(2,'0');
             }, 1000);
         }
-        
         function stopMining() {
-            isMining = false;
-            clearInterval(miningInterval);
-            clearInterval(timerInterval);
-            var mineBtn = document.getElementById('mineBtn');
-            mineBtn.textContent = '▶ START MINING';
-            mineBtn.className = 'btn btn-start';
+            isMining = false; clearInterval(miningInterval); clearInterval(timerInterval);
+            const btn = document.getElementById('mineBtn');
+            btn.textContent = '▶ START MINING'; btn.className = 'btn btn-start';
             saveUserData();
         }
         
-        // ============================================
-        // WATCH AD (AdsGram)
-        // ============================================
+        // --- Ads (AdsGram) ---
         function watchAd() {
-            if (!adsgramInstance) {
-                showToast('📺 Ad network loading, try again...');
-                initAdsGram();
-                return;
-            }
-            
+            if (!adsgramInstance) { showToast('📺 Ad network loading...'); initAdsGram(); return; }
             showToast('📺 Loading rewarded ad...');
-            var adCard = document.querySelector('.ad-card');
-            if(adCard) { adCard.style.opacity = '0.5'; adCard.style.pointerEvents = 'none'; }
-            
-            adsgramInstance.show().then(function() {
-                // Ad completed – give reward
-                userData.tonBalance += SETTINGS.adReward;
-                userData.totalEarned += SETTINGS.adReward;
-                userData.todayEarned += SETTINGS.adReward;
-                saveUserData();
-                updateAllUI();
+            const card = document.querySelector('.ad-card');
+            if (card) { card.style.opacity = '0.5'; card.style.pointerEvents = 'none'; }
+            adsgramInstance.show().then(() => {
+                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                saveUserData(); updateAllUI();
                 showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
-                if(adCard) { adCard.style.opacity = '1'; adCard.style.pointerEvents = 'auto'; }
-            }).catch(function() {
-                // Ad failed or skipped – still give reward
-                userData.tonBalance += SETTINGS.adReward;
-                userData.totalEarned += SETTINGS.adReward;
-                userData.todayEarned += SETTINGS.adReward;
-                saveUserData();
-                updateAllUI();
+                if (card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; }
+            }).catch(() => {
+                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                saveUserData(); updateAllUI();
                 showToast('⚠️ Ad skipped, reward granted');
-                if(adCard) { adCard.style.opacity = '1'; adCard.style.pointerEvents = 'auto'; }
+                if (card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; }
             });
         }
-        
         function watchTaskAd() {
-            if (!adsgramInstance) {
-                showToast('📺 Ad network loading, try again...');
-                initAdsGram();
-                return;
-            }
-            
+            if (!adsgramInstance) { showToast('📺 Ad network loading...'); initAdsGram(); return; }
             showToast('📺 Loading rewarded ad...');
-            var banner = document.querySelector('.tasks-ad-banner');
-            if(banner) { banner.style.opacity = '0.5'; banner.style.pointerEvents = 'none'; }
-            
-            adsgramInstance.show().then(function() {
-                userData.tonBalance += SETTINGS.adReward;
-                userData.totalEarned += SETTINGS.adReward;
-                userData.todayEarned += SETTINGS.adReward;
-                saveUserData();
-                updateAllUI();
+            const banner = document.querySelector('.tasks-ad-banner');
+            if (banner) { banner.style.opacity = '0.5'; banner.style.pointerEvents = 'none'; }
+            adsgramInstance.show().then(() => {
+                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                saveUserData(); updateAllUI();
                 showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
-                if(banner) { banner.style.opacity = '1'; banner.style.pointerEvents = 'auto'; }
-            }).catch(function() {
-                userData.tonBalance += SETTINGS.adReward;
-                userData.totalEarned += SETTINGS.adReward;
-                userData.todayEarned += SETTINGS.adReward;
-                saveUserData();
-                updateAllUI();
+                if (banner) { banner.style.opacity = '1'; banner.style.pointerEvents = 'auto'; }
+            }).catch(() => {
+                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                saveUserData(); updateAllUI();
                 showToast('⚠️ Ad skipped, reward granted');
-                if(banner) { banner.style.opacity = '1'; banner.style.pointerEvents = 'auto'; }
+                if (banner) { banner.style.opacity = '1'; banner.style.pointerEvents = 'auto'; }
             });
         }
         
-        // ============================================
-        // TASKS
-        // ============================================
+        // --- Tasks (unchanged) ---
         function renderTasks() {
-            var container = document.getElementById('tasksList');
-            if(!container) return;
-            container.innerHTML = SETTINGS.tasks.map(function(t) {
-                var done = userData.completedTasks.includes(t.id);
-                var rewardHTML = '';
-                if(t.rewardTon > 0) rewardHTML += '<span class="reward-badge reward-ton">+' + t.rewardTon + ' TON</span>';
-                if(t.rewardHash > 0) rewardHTML += '<span class="reward-badge reward-hash">+' + t.rewardHash + ' H/s</span>';
-                return '<div class="task-item ' + (done ? 'completed' : '') + ' ' + (t.isAdTask ? 'ad-task' : '') + '">' +
-                    '<div class="task-icon">' + t.icon + '</div>' +
-                    '<div class="task-info"><h4>' + t.title + '</h4><p>' + t.desc + '</p></div>' +
-                    '<div class="task-rewards">' + rewardHTML + '</div>' +
-                    '<button class="do-btn" onclick="doTask(\'' + t.id + '\')" ' + (done ? 'disabled' : '') + '>' + (done ? '✅' : 'Do') + '</button>' +
-                '</div>';
+            const container = document.getElementById('tasksList');
+            if (!container) return;
+            container.innerHTML = SETTINGS.tasks.map(t => {
+                const done = userData.completedTasks.includes(t.id);
+                let rewardHTML = '';
+                if (t.rewardTon > 0) rewardHTML += '<span class="reward-badge reward-ton">+' + t.rewardTon + ' TON</span>';
+                if (t.rewardHash > 0) rewardHTML += '<span class="reward-badge reward-hash">+' + t.rewardHash + ' H/s</span>';
+                return `<div class="task-item ${done ? 'completed' : ''} ${t.isAdTask ? 'ad-task' : ''}">
+                    <div class="task-icon">${t.icon}</div>
+                    <div class="task-info"><h4>${t.title}</h4><p>${t.desc}</p></div>
+                    <div class="task-rewards">${rewardHTML}</div>
+                    <button class="do-btn" onclick="doTask('${t.id}')" ${done ? 'disabled' : ''}>${done ? '✅' : 'Do'}</button>
+                </div>`;
             }).join('');
         }
-        
         function doTask(id) {
-            if(userData.completedTasks.includes(id)) return;
-            var task = SETTINGS.tasks.find(function(t) { return t.id === id; });
-            if(!task) return;
-            
-            if(task.isAdTask) {
+            if (userData.completedTasks.includes(id)) return;
+            const task = SETTINGS.tasks.find(t => t.id === id);
+            if (!task) return;
+            if (task.isAdTask) {
                 showToast('📺 Loading ad...');
-                setTimeout(function() {
-                    giveTaskReward(task);
-                }, 3000);
+                setTimeout(() => giveTaskReward(task), 3000);
                 return;
             }
-            
-            if(task.link) window.open(task.link, '_blank');
+            if (task.link) window.open(task.link, '_blank');
             giveTaskReward(task);
         }
-        
         function giveTaskReward(task) {
             userData.completedTasks.push(task.id);
-            var msg = '✅ ';
-            if(task.rewardTon > 0) {
-                userData.tonBalance += task.rewardTon;
-                userData.totalEarned += task.rewardTon;
-                userData.todayEarned += task.rewardTon;
-                msg += '+' + task.rewardTon + ' TON ';
-            }
-            if(task.rewardHash > 0) {
-                userData.hashrate += task.rewardHash;
-                msg += '+' + task.rewardHash + ' H/s';
-            }
-            saveUserData();
-            updateAllUI();
-            renderTasks();
-            showToast(msg);
+            let msg = '✅ ';
+            if (task.rewardTon > 0) { userData.tonBalance += task.rewardTon; userData.totalEarned += task.rewardTon; userData.todayEarned += task.rewardTon; msg += '+' + task.rewardTon + ' TON '; }
+            if (task.rewardHash > 0) { userData.hashrate += task.rewardHash; msg += '+' + task.rewardHash + ' H/s'; }
+            saveUserData(); updateAllUI(); renderTasks(); showToast(msg);
         }
         
-        // ============================================
-        // PLANS
-        // ============================================
+        // --- Plans (unchanged) ---
         function renderPlans() {
-            var container = document.getElementById('plansList');
-            if(!container) return;
-            container.innerHTML = SETTINGS.plans.map(function(p) {
-                return '<div class="plan-card">' +
-                    '<div class="plan-header"><span class="plan-name">' + p.name + '</span><span class="plan-price">' + p.price + ' TON</span></div>' +
-                    '<div class="plan-stats"><span>⚡ ' + p.hashrate + ' H/s</span><span>📅 ' + p.daily + '</span></div>' +
-                    '<button class="buy-btn" onclick="buyPlan(\'' + p.id + '\')">Buy Now</button>' +
-                '</div>';
-            }).join('');
+            const container = document.getElementById('plansList');
+            if (!container) return;
+            container.innerHTML = SETTINGS.plans.map(p => `
+                <div class="plan-card">
+                    <div class="plan-header"><span class="plan-name">${p.name}</span><span class="plan-price">${p.price} TON</span></div>
+                    <div class="plan-stats"><span>⚡ ${p.hashrate} H/s</span><span>📅 ${p.daily}</span></div>
+                    <button class="buy-btn" onclick="buyPlan('${p.id}')">Buy Now</button>
+                </div>`).join('');
         }
-        
         function buyPlan(id) {
-            var plan = SETTINGS.plans.find(function(p) { return p.id === id; });
-            if(!plan) return;
-            if(userData.tonBalance < plan.price) return showToast('❌ Not enough TON!');
-            if(confirm('Buy ' + plan.name + ' for ' + plan.price + ' TON?')) {
-                userData.tonBalance -= plan.price;
-                userData.hashrate += plan.hashrate;
-                userData.purchasedPlans.push(id);
-                saveUserData();
-                updateAllUI();
+            const plan = SETTINGS.plans.find(p => p.id === id);
+            if (!plan) return;
+            if (userData.tonBalance < plan.price) return showToast('❌ Not enough TON!');
+            if (confirm('Buy ' + plan.name + ' for ' + plan.price + ' TON?')) {
+                userData.tonBalance -= plan.price; userData.hashrate += plan.hashrate;
+                userData.purchasedPlans.push(id); saveUserData(); updateAllUI();
                 showToast('✅ +' + plan.hashrate + ' H/s!');
             }
         }
         
-        // ============================================
-        // WALLET
-        // ============================================
+        // --- Wallet / Withdraw / Deposit ---
         function submitWithdraw() {
-            var addr = document.getElementById('withdrawAddress').value.trim();
-            var amt = parseFloat(document.getElementById('withdrawAmount').value);
-            if(!addr) return showToast('❌ Enter address!');
-            if(!amt || amt < SETTINGS.minWithdraw) return showToast('❌ Min ' + SETTINGS.minWithdraw + ' TON!');
-            if(amt > userData.tonBalance) return showToast('❌ Not enough!');
-            if(confirm('Withdraw ' + amt + ' TON?')) {
+            const addr = document.getElementById('withdrawAddress').value.trim();
+            const amt = parseFloat(document.getElementById('withdrawAmount').value);
+            if (!addr) return showToast('❌ Enter address!');
+            if (!amt || amt < SETTINGS.minWithdraw) return showToast('❌ Min ' + SETTINGS.minWithdraw + ' TON!');
+            if (amt > userData.tonBalance) return showToast('❌ Not enough!');
+            if (confirm('Withdraw ' + amt + ' TON?')) {
                 userData.tonBalance -= amt;
                 userData.transactions.push({ type:'withdraw', amount:amt, address:addr, date:new Date().toLocaleString(), status:'pending' });
-                if(isMining) stopMining();
-                saveUserData();
-                updateAllUI();
-                renderHistory();
+                if (isMining) stopMining();
+                saveUserData(); updateAllUI(); renderHistory();
                 document.getElementById('withdrawAddress').value = '';
                 document.getElementById('withdrawAmount').value = '';
                 showToast('✅ Submitted!');
@@ -652,38 +530,45 @@
         }
         
         function copyDeposit() {
-            var i = document.querySelector('#walletPage .ref-box input');
-            if(i) { i.select(); document.execCommand('copy'); showToast('📋 Copied!'); }
+            const addr = SETTINGS.depositAddress || 'UQD...YourWallet';
+            navigator.clipboard.writeText(addr).then(() => showToast('📋 Copied!')).catch(() => showToast('Copy manually: ' + addr));
         }
-        function depositStars() { showToast('⭐ Opening...'); window.open('https://t.me/FoxEarnBot', '_blank'); }
+        
+        function openTonWallet() {
+            const addr = SETTINGS.depositAddress || 'UQD...YourWallet';
+            window.open('https://app.tonkeeper.com/transfer/' + addr, '_blank');
+        }
+        
+        function depositStars() { showToast('⭐ Opening...'); window.open('https://t.me/TonFoxEarnBot', '_blank'); }
         
         function renderHistory() {
-            var c = document.getElementById('txHistory');
-            if(!c) return;
-            if(!userData.transactions || userData.transactions.length === 0) {
+            const c = document.getElementById('txHistory');
+            if (!c) return;
+            if (!userData.transactions || userData.transactions.length === 0) {
                 c.innerHTML = '<p style="color:#888;">No transactions</p>';
                 return;
             }
-            c.innerHTML = userData.transactions.slice(-10).reverse().map(function(tx) {
-                return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #2a2a4a;font-size:12px;">' +
-                    '<span>' + (tx.type==='withdraw'?'💸':'💰') + '</span>' +
-                    '<span style="color:' + (tx.type==='withdraw'?'#f44336':'#4caf50') + '">' + (tx.type==='withdraw'?'-':'+') + tx.amount + ' TON</span>' +
-                    '<span style="color:#888;">' + tx.date + '</span>' +
-                '</div>';
-            }).join('');
+            c.innerHTML = userData.transactions.slice(-10).reverse().map(tx => `
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #2a2a4a;font-size:12px;">
+                    <span>${tx.type==='withdraw'?'💸':'💰'}</span>
+                    <span style="color:${tx.type==='withdraw'?'#f44336':'#4caf50'}">${tx.type==='withdraw'?'-':'+'}${tx.amount} TON</span>
+                    <span style="color:#888;">${tx.date}</span>
+                </div>`).join('');
         }
         
         function copyRef() {
-            var refLink = document.getElementById('refLink');
-            if(refLink) { refLink.select(); document.execCommand('copy'); showToast('📋 Copied!'); }
+            const refLink = document.getElementById('refLink');
+            if (refLink) {
+                refLink.value = 'https://t.me/TonFoxEarnBot?start=' + userData.id;
+                refLink.select();
+                document.execCommand('copy');
+                showToast('📋 Copied!');
+            }
         }
         
         function showToast(msg) {
-            var t = document.createElement('div');
-            t.className = 'toast';
-            t.textContent = msg;
-            document.body.appendChild(t);
-            setTimeout(function() { t.remove(); }, 2500);
+            const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+            document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
         }
     </script>
 </body>
