@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoxEarn Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a1a; color: white; }
+        .admin { max-width: 800px; margin: 0 auto; padding: 20px; }
+        
+        .header { background: linear-gradient(135deg, #0088cc, #005577); padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
+        .header h1 { font-size: 24px; }
+        
+        .tabs { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 18px; border-radius: 20px; border: 1px solid #333; background: #1a1a2e; color: white; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .tab-btn.active { background: #0088cc; border-color: #0088cc; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .section { background: #1a1a2e; border-radius: 15px; padding: 20px; margin-bottom: 15px; border: 1px solid #2a2a4a; }
+        .section h2 { color: #0088cc; margin-bottom: 15px; font-size: 18px; border-bottom: 1px solid #2a2a4a; padding-bottom: 10px; }
+        .section h3 { color: #4caf50; margin: 15px 0 10px; }
+        
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; background: #0d0d20; border: 1px solid #333; border-radius: 8px; color: white; font-size: 14px; }
+        .form-group textarea { min-height: 60px; }
+        
+        .btn { padding: 12px 20px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; color: white; font-size: 14px; }
+        .btn:active { transform: scale(0.97); }
+        .btn-blue { background: #0088cc; }
+        .btn-green { background: #4caf50; }
+        .btn-red { background: #f44336; }
+        .btn-purple { background: #9c27b0; }
+        
+        .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .col { flex: 1; min-width: 150px; }
+        .col-2 { flex: 2; min-width: 150px; }
+        
+        .card-item { background: #0d0d20; border-radius: 10px; padding: 15px; margin-bottom: 10px; border: 1px solid #2a2a4a; display: flex; justify-content: space-between; align-items: center; }
+        .card-item .info { flex: 1; }
+        .card-item .info h4 { font-size: 14px; }
+        .card-item .info p { font-size: 11px; color: #888; }
+        
+        .badge { padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; display: inline-block; margin: 2px; }
+        .badge-blue { background: #0088cc20; color: #0088cc; }
+        .badge-orange { background: #f7931a20; color: #f7931a; }
+        .badge-green { background: #4caf5020; color: #4caf50; }
+        .badge-yellow { background: #ff980020; color: #ff9800; }
+        .badge-pink { background: #f5576c20; color: #f5576c; }
+        
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+        .checkbox-group input[type="checkbox"] { width: auto; margin: 0; }
+        .checkbox-group label { color: #f5576c; font-size: 13px; text-transform: none; margin: 0; }
+        
+        .toast { position: fixed; top: 20px; right: 20px; background: #1a1a2e; border-left: 4px solid #0088cc; padding: 15px; border-radius: 8px; z-index: 1000; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="admin">
+        
+        <div class="header">
+            <h1>🦊 FoxEarn Admin Panel</h1>
+            <p style="opacity:0.8;">Control Everything - TON & Hashrate Rewards</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('mining')">⛏️ Mining</button>
+            <button class="tab-btn" onclick="switchTab('plans')">📋 Plans</button>
+            <button class="tab-btn" onclick="switchTab('tasks')">📝 Tasks</button>
+            <button class="tab-btn" onclick="switchTab('ads')">📺 Ads</button>
+            <button class="tab-btn" onclick="switchTab('withdrawals')">💸 Payouts</button>
+            <button class="tab-btn" onclick="switchTab('referral')">👥 Referral</button>
+        </div>
+        
+        <!-- MINING SETTINGS -->
+        <div class="tab-content active" id="tab-mining">
+            <div class="section">
+                <h2>⛏️ Mining Configuration</h2>
+                <div class="row">
+                    <div class="col"><div class="form-group"><label>Mining Speed (TON per Hash per 24h)</label><input type="number" id="miningSpeed" value="0.0001" step="0.0001"></div></div>
+                    <div class="col"><div class="form-group"><label>TON Price (USD)</label><input type="number" id="tonPrice" value="5.20" step="0.01"></div></div>
+                </div>
+                <div class="row">
+                    <div class="col"><div class="form-group"><label>Min Withdraw (TON)</label><input type="number" id="minWithdraw" value="0.5" step="0.1"></div></div>
+                    <div class="col"><div class="form-group"><label>Ad Reward (TON per ad)</label><input type="number" id="adReward" value="0.01" step="0.0001"></div></div>
+                </div>
+                <button class="btn btn-blue" onclick="saveMiningSettings()">💾 Save Mining Settings</button>
+            </div>
+        </div>
+        
+        <!-- PLANS MANAGEMENT -->
+        <div class="tab-content" id="tab-plans">
+            <div class="section">
+                <h2>📋 Mining Plans</h2>
+                <div id="adminPlansList"></div>
+                
+                <div class="section" style="border: 2px solid #0088cc;">
+                    <h3 style="color:#4caf50;">➕ Add New Plan</h3>
+                    <div class="row">
+                        <div class="col"><div class="form-group"><label>Plan Name</label><input type="text" id="newPlanName" placeholder="e.g., Ultra"></div></div>
+                        <div class="col"><div class="form-group"><label>Price (TON)</label><input type="number" id="newPlanPrice" value="25"></div></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><div class="form-group"><label>Hashrate (H/s)</label><input type="number" id="newPlanHashrate" value="2500"></div></div>
+                        <div class="col"><div class="form-group"><label>Icon (emoji)</label><input type="text" id="newPlanIcon" value="💎"></div></div>
+                    </div>
+                    <button class="btn btn-green" onclick="addNewPlan()">➕ Add Plan</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TASKS MANAGEMENT - DUAL REWARDS -->
+        <div class="tab-content" id="tab-tasks">
+            <div class="section">
+                <h2>📝 Tasks (TON + Hashrate Rewards)</h2>
+                <div id="adminTasksList"></div>
+                
+                <div class="section" style="border: 2px solid #0088cc;">
+                    <h3 style="color:#4caf50;">➕ Add New Task with Dual Reward</h3>
+                    <div class="form-group"><label>Task Title</label><input type="text" id="newTaskTitle" placeholder="e.g., Join Channel"></div>
+                    <div class="form-group"><label>Description</label><input type="text" id="newTaskDesc" placeholder="What user needs to do"></div>
+                    
+                    <!-- AD TASK TOGGLE -->
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="newTaskIsAd" onchange="toggleAdTaskMode()">
+                        <label for="newTaskIsAd">📺 This is a "Watch Ad" task (shows ad before reward)</label>
+                    </div>
+                    
+                    <h4 style="color:#f7931a;margin:10px 0;" id="rewardHeader">🎁 Rewards (Set both or one)</h4>
+                    <div class="row" id="rewardRow">
+                        <div class="col"><div class="form-group"><label>💰 TON Reward</label><input type="number" id="newTaskRewardTon" value="0.01" step="0.001" placeholder="0 = no TON reward"></div></div>
+                        <div class="col"><div class="form-group"><label>⚡ Hashrate Reward (H/s)</label><input type="number" id="newTaskRewardHash" value="0" step="1" placeholder="0 = no hashrate reward"></div></div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col"><div class="form-group"><label>Icon (emoji)</label><input type="text" id="newTaskIcon" value="📋"></div></div>
+                        <div class="col"><div class="form-group"><label>Link (optional)</label><input type="text" id="newTaskLink" placeholder="https://..."></div></div>
+                    </div>
+                    <button class="btn btn-green" onclick="addNewTask()">➕ Add Task</button>
+                    
+                    <p style="color:#888;font-size:11px;margin-top:10px;">
+                        💡 <b>Examples:</b><br>
+                        • TON only: TON=0.02, Hash=0 → "Earn 0.02 TON"<br>
+                        • Hash only: TON=0, Hash=5 → "Earn +5 H/s"<br>
+                        • Both: TON=0.01, Hash=3 → "Earn 0.01 TON + 3 H/s"
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ADS SETTINGS -->
+        <div class="tab-content" id="tab-ads">
+            <div class="section">
+                <h2>📺 Ad Settings</h2>
+                <div class="form-group"><label>AdSterra / Monetag / AdsGram Code</label><textarea id="adCode" placeholder="Paste your ad script here..."></textarea></div>
+                <div class="form-group"><label>Ad Cooldown (seconds)</label><input type="number" id="adCooldown" value="60"></div>
+                <div class="form-group"><label>Ad Reward (TON)</label><input type="number" id="adRewardAds" value="0.01" step="0.0001"></div>
+                <div class="form-group"><label>AdsGram Block ID</label><input type="text" id="adsgramBlockId" placeholder="e.g., 29232"></div>
+                <button class="btn btn-purple" onclick="saveAdSettings()">💾 Save Ad Settings</button>
+            </div>
+        </div>
+        
+        <!-- WITHDRAWALS -->
+        <div class="tab-content" id="tab-withdrawals">
+            <div class="section">
+                <h2>💸 Pending Withdrawals</h2>
+                <div id="withdrawalsList"><p style="color:#888;">No pending withdrawals</p></div>
+            </div>
+        </div>
+        
+        <!-- REFERRAL -->
+        <div class="tab-content" id="tab-referral">
+            <div class="section">
+                <h2>👥 Referral</h2>
+                <div class="form-group"><label>Commission (%)</label><input type="number" id="referralPercent" value="10"></div>
+                <button class="btn btn-blue" onclick="saveReferralSettings()">💾 Save</button>
+            </div>
+        </div>
+        
+    </div>
+    
+    <div id="toastContainer"></div>
+
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // Your Firebase config (SAME as in index.html)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDldvyBpQK95cyvzE267boV5HfOLJLTn2Q",
+            authDomain: "foxiearn.firebaseapp.com",
+            projectId: "foxiearn",
+            storageBucket: "foxiearn.firebasestorage.app",
+            messagingSenderId: "677808159330",
+            appId: "1:677808159330:web:db53698d8eab0a9cd5ef3b"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        let SETTINGS = {};
+        
+        function loadSettings() {
+            db.collection('settings').doc('global').get().then(function(doc) {
+                if(doc.exists) {
+                    SETTINGS = doc.data();
+                } else {
+                    // Default settings if not found
+                    SETTINGS = {
+                        miningSpeed: 0.0001, tonPrice: 5.20, adReward: 0.01, minWithdraw: 0.5,
+                        referralPercent: 10, adCooldown: 60,
+                        plans: [
+                            { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0050000 TON', icon:'🥉' },
+                            { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0500000 TON', icon:'🥈' },
+                            { id:'plan3', name:'🥇 Max', price:50, hashrate:5000, daily:'0.5000000 TON', icon:'🥇' }
+                        ],
+                        tasks: [
+                            { id:'t0', title:'📺 Watch Ad', desc:'Watch a short ad', rewardTon:0.01, rewardHash:0, icon:'📺', link:'', isAdTask:true },
+                            { id:'t1', title:'Join Telegram', desc:'Subscribe', rewardTon:0.02, rewardHash:0, icon:'📢', link:'https://t.me/foxearn', isAdTask:false },
+                            { id:'t2', title:'Follow on X', desc:'Follow us', rewardTon:0, rewardHash:5, icon:'🐦', link:'https://x.com/foxearn', isAdTask:false }
+                        ]
+                    };
+                    db.collection('settings').doc('global').set(SETTINGS);
+                }
+                loadFormValues();
+                renderAllLists();
+            });
+        }
+        
+        function saveSettingsToCloud() {
+            db.collection('settings').doc('global').set(SETTINGS, {merge: true})
+            .then(function() { showToast('✅ Settings saved to cloud!'); })
+            .catch(function(e) { showToast('❌ Error: ' + e.message); });
+        }
+        
+        function switchTab(name) {
+            document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.getElementById('tab-' + name).classList.add('active');
+            if(event && event.target) event.target.classList.add('active');
+            if(name === 'plans') renderAdminPlans();
+            if(name === 'tasks') renderAdminTasks();
+            if(name === 'withdrawals') renderWithdrawals();
+        }
+        
+        function loadFormValues() {
+            if(SETTINGS.miningSpeed) document.getElementById('miningSpeed').value = SETTINGS.miningSpeed;
+            if(SETTINGS.tonPrice) document.getElementById('tonPrice').value = SETTINGS.tonPrice;
+            if(SETTINGS.adReward) document.getElementById('adReward').value = SETTINGS.adReward;
+            if(document.getElementById('adRewardAds')) document.getElementById('adRewardAds').value = SETTINGS.adReward;
+            if(SETTINGS.minWithdraw) document.getElementById('minWithdraw').value = SETTINGS.minWithdraw;
+            if(SETTINGS.referralPercent) document.getElementById('referralPercent').value = SETTINGS.referralPercent;
+            if(SETTINGS.adCooldown) document.getElementById('adCooldown').value = SETTINGS.adCooldown;
+        }
+        
+        function renderAllLists() {
+            renderAdminPlans();
+            renderAdminTasks();
+        }
+        
+        // MINING
+        function saveMiningSettings() {
+            SETTINGS.miningSpeed = parseFloat(document.getElementById('miningSpeed').value) || 0.0001;
+            SETTINGS.tonPrice = parseFloat(document.getElementById('tonPrice').value) || 5.20;
+            SETTINGS.adReward = parseFloat(document.getElementById('adReward').value) || 0.01;
+            SETTINGS.minWithdraw = parseFloat(document.getElementById('minWithdraw').value) || 0.5;
+            saveSettingsToCloud();
+        }
+        
+        // PLANS
+        function renderAdminPlans() {
+            var c = document.getElementById('adminPlansList');
+            if(!SETTINGS.plans || SETTINGS.plans.length === 0) { c.innerHTML = '<p style="color:#888;">No plans</p>'; return; }
+            c.innerHTML = SETTINGS.plans.map(function(p, i) {
+                return '<div class="card-item">' +
+                    '<div class="info"><h4>' + p.icon + ' ' + p.name + '</h4><p>⚡ ' + p.hashrate + ' H/s | 💰 ' + p.price + ' TON | 📅 ' + p.daily + '</p></div>' +
+                    '<button class="btn btn-red" onclick="deletePlan(' + i + ')" style="padding:8px 15px;font-size:12px;">🗑</button>' +
+                '</div>';
+            }).join('');
+        }
+        
+        function addNewPlan() {
+            var name = document.getElementById('newPlanName').value;
+            var price = parseFloat(document.getElementById('newPlanPrice').value);
+            var hashrate = parseInt(document.getElementById('newPlanHashrate').value);
+            var icon = document.getElementById('newPlanIcon').value || '💎';
+            if(!name || !price) return showToast('❌ Fill name and price!');
+            var daily = (hashrate * SETTINGS.miningSpeed).toFixed(7) + ' TON';
+            SETTINGS.plans.push({ id:'plan'+Date.now(), name:icon+' '+name, price:price, hashrate:hashrate, daily:daily, icon:icon });
+            saveSettingsToCloud();
+            renderAdminPlans();
+            document.getElementById('newPlanName').value = '';
+            document.getElementById('newPlanPrice').value = '';
+        }
+        
+        function deletePlan(i) {
+            if(confirm('Delete?')) {
+                SETTINGS.plans.splice(i,1);
+                saveSettingsToCloud();
+                renderAdminPlans();
+            }
+        }
+        
+        // TASKS
+        function renderAdminTasks() {
+            var c = document.getElementById('adminTasksList');
+            if(!SETTINGS.tasks || SETTINGS.tasks.length === 0) { c.innerHTML = '<p style="color:#888;">No tasks</p>'; return; }
+            c.innerHTML = SETTINGS.tasks.map(function(t, i) {
+                var rewards = '';
+                if(t.rewardTon > 0) rewards += '<span class="badge badge-blue">💰 +' + t.rewardTon + ' TON</span> ';
+                if(t.rewardHash > 0) rewards += '<span class="badge badge-orange">⚡ +' + t.rewardHash + ' H/s</span> ';
+                if(t.isAdTask) rewards += '<span class="badge badge-pink">📺 Ad Task</span> ';
+                return '<div class="card-item">' +
+                    '<div class="info"><h4>' + t.icon + ' ' + t.title + '</h4><p>' + t.desc + ' | ' + rewards + '| 🔗 ' + (t.link || 'None') + '</p></div>' +
+                    '<button class="btn btn-red" onclick="deleteTask(' + i + ')" style="padding:8px 15px;font-size:12px;">🗑</button>' +
+                '</div>';
+            }).join('');
+        }
+        
+        function toggleAdTaskMode() {
+            var isAd = document.getElementById('newTaskIsAd').checked;
+            if(isAd) {
+                document.getElementById('newTaskIcon').value = '📺';
+                document.getElementById('newTaskTitle').placeholder = 'e.g., Watch Ad to Earn';
+                document.getElementById('rewardHeader').textContent = '🎁 Ad Watch Reward';
+            } else {
+                document.getElementById('newTaskIcon').value = '📋';
+                document.getElementById('newTaskTitle').placeholder = 'e.g., Join Channel';
+                document.getElementById('rewardHeader').textContent = '🎁 Rewards (Set both or one)';
+            }
+        }
+        
+        function addNewTask() {
+            var title = document.getElementById('newTaskTitle').value;
+            var desc = document.getElementById('newTaskDesc').value;
+            var rewardTon = parseFloat(document.getElementById('newTaskRewardTon').value) || 0;
+            var rewardHash = parseInt(document.getElementById('newTaskRewardHash').value) || 0;
+            var icon = document.getElementById('newTaskIcon').value || '📋';
+            var link = document.getElementById('newTaskLink').value;
+            var isAdTask = document.getElementById('newTaskIsAd').checked;
+            
+            if(!title) return showToast('❌ Enter title!');
+            if(rewardTon === 0 && rewardHash === 0) return showToast('❌ Set at least one reward!');
+            
+            SETTINGS.tasks.push({ id:'t'+Date.now(), title:title, desc:desc, rewardTon:rewardTon, rewardHash:rewardHash, icon:icon, link:link, isAdTask:isAdTask });
+            saveSettingsToCloud();
+            renderAdminTasks();
+            document.getElementById('newTaskTitle').value = '';
+            document.getElementById('newTaskDesc').value = '';
+            document.getElementById('newTaskIsAd').checked = false;
+        }
+        
+        function deleteTask(i) {
+            if(confirm('Delete?')) {
+                SETTINGS.tasks.splice(i,1);
+                saveSettingsToCloud();
+                renderAdminTasks();
+            }
+        }
+        
+        // ADS
+        function saveAdSettings() {
+            SETTINGS.adCode = document.getElementById('adCode').value;
+            SETTINGS.adCooldown = parseInt(document.getElementById('adCooldown').value) || 60;
+            if(document.getElementById('adRewardAds')) SETTINGS.adReward = parseFloat(document.getElementById('adRewardAds').value) || 0.01;
+            if(document.getElementById('adsgramBlockId')) SETTINGS.adsgramBlockId = document.getElementById('adsgramBlockId').value;
+            saveSettingsToCloud();
+        }
+        
+        // WITHDRAWALS
+        function renderWithdrawals() {
+            var c = document.getElementById('withdrawalsList');
+            // Read from Firestore all users' withdrawals (simplified: check all user docs)
+            db.collection('users').get().then(function(snapshot) {
+                var pendingTxs = [];
+                snapshot.forEach(function(doc) {
+                    var user = doc.data();
+                    var txs = user.transactions || [];
+                    txs.forEach(function(tx) {
+                        if(tx.type === 'withdraw' && tx.status === 'pending') {
+                            pendingTxs.push({ userId: doc.id, ...tx });
+                        }
+                    });
+                });
+                if(pendingTxs.length === 0) {
+                    c.innerHTML = '<p style="color:#888;">No pending withdrawals</p>';
+                    return;
+                }
+                c.innerHTML = pendingTxs.map(function(tx, i) {
+                    return '<div class="card-item">' +
+                        '<div class="info"><h4>💸 ' + tx.amount + ' TON</h4><p>📤 ' + tx.address + ' | ' + tx.date + '</p><span class="badge badge-yellow">Pending</span></div>' +
+                        '<div><button class="btn btn-green" onclick="approveWithdraw(\'' + tx.userId + '\',\'' + tx.date + '\')" style="padding:6px 12px;font-size:11px;">✅</button>' +
+                        '<button class="btn btn-red" onclick="rejectWithdraw(\'' + tx.userId + '\',\'' + tx.date + '\')" style="padding:6px 12px;font-size:11px;">❌</button></div>' +
+                    '</div>';
+                }).join('');
+            });
+        }
+        
+        function approveWithdraw(userId, date) {
+            // Update user's transaction status
+            db.collection('users').doc(userId).get().then(function(doc) {
+                var user = doc.data();
+                var txs = user.transactions;
+                var tx = txs.find(function(t) { return t.date === date && t.type === 'withdraw' && t.status === 'pending'; });
+                if(tx) {
+                    tx.status = 'approved';
+                    db.collection('users').doc(userId).update({ transactions: txs });
+                    showToast('✅ Approved!');
+                    renderWithdrawals();
+                }
+            });
+        }
+        
+        function rejectWithdraw(userId, date) {
+            db.collection('users').doc(userId).get().then(function(doc) {
+                var user = doc.data();
+                var txs = user.transactions;
+                var tx = txs.find(function(t) { return t.date === date && t.type === 'withdraw' && t.status === 'pending'; });
+                if(tx) {
+                    tx.status = 'rejected';
+                    user.tonBalance += tx.amount;
+                    db.collection('users').doc(userId).update({ transactions: txs, tonBalance: user.tonBalance });
+                    showToast('❌ Rejected. TON refunded.');
+                    renderWithdrawals();
+                }
+            });
+        }
+        
+        // REFERRAL
+        function saveReferralSettings() {
+            SETTINGS.referralPercent = parseInt(document.getElementById('referralPercent').value) || 10;
+            saveSettingsToCloud();
+        }
+        
+        function showToast(msg) {
+            var t = document.createElement('div');
+            t.className = 'toast';
+            t.textContent = msg;
+            document.getElementById('toastContainer').appendChild(t);
+            setTimeout(function() { t.remove(); }, 2500);
+        }
+        
+        // Initialize
+        loadSettings();
+    </script>
+</body>
+</html>
