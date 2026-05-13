@@ -184,7 +184,7 @@
         </nav>
     </div>
 
-    <!-- Firebase SDK (compat version) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
@@ -194,10 +194,9 @@
 
     <script>
         // ============================================
-        // NaN-PROOF FOXEARN
+        // FOXEARN - FIXED ADS + NAN PROTECTION
         // ============================================
         
-        // Helper: always return a valid number
         function num(val, fallback) {
             const n = Number(val);
             return isNaN(n) ? (fallback || 0) : n;
@@ -222,18 +221,17 @@
         const ADSGRAM_BLOCK_ID = '30093';
         
         function initAdsGram() {
-            if (typeof Adsgram !== 'undefined') adsgramInstance = Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
-            else setTimeout(initAdsGram, 1000);
+            if (typeof Adsgram !== 'undefined') {
+                adsgramInstance = Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+                console.log('✅ AdsGram ready');
+            } else {
+                setTimeout(initAdsGram, 1000);
+            }
         }
         
-        // Default settings (rock-solid defaults)
         const DEFAULT_SETTINGS = {
-            miningSpeed: 0.0001,
-            tonPrice: 5.20,
-            adReward: 0.01,
-            minWithdraw: 0.5,
-            referralPercent: 10,
-            depositAddress: 'UQD...YourWallet',
+            miningSpeed: 0.0001, tonPrice: 5.20, adReward: 0.01, minWithdraw: 0.5,
+            referralPercent: 10, depositAddress: 'UQD...YourWallet',
             plans: [
                 { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0050000 TON', icon:'🥉' },
                 { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0500000 TON', icon:'🥈' },
@@ -251,16 +249,11 @@
         
         let isMining = false, miningInterval = null, timerInterval = null, miningSeconds = 0, lastDayReset = new Date().getDate();
         
-        // ============================================
         // AUTH
-        // ============================================
         auth.signInAnonymously().catch(() => startAppLocal());
         auth.onAuthStateChanged(user => {
-            if (user) {
-                currentUser = user;
-                loadUserFromCloud(user.uid);
-                loadSettingsFromCloud();
-            } else startAppLocal();
+            if (user) { currentUser = user; loadUserFromCloud(user.uid); loadSettingsFromCloud(); }
+            else startAppLocal();
         });
         
         function loadUserFromCloud(uid) {
@@ -279,10 +272,9 @@
                     }
                 } else {
                     userData = {
-                        id: uid, username: 'Miner', tonBalance: 0, hashrate: 10,
-                        totalEarned: 0, todayEarned: 0, referrals: 0, referralEarnings: 0,
-                        completedTasks: [], purchasedPlans: [], miningSeconds: 0,
-                        transactions: [], blocked: false, createdAt: new Date().toISOString()
+                        id: uid, username: 'Miner', tonBalance: 0, hashrate: 10, totalEarned: 0, todayEarned: 0,
+                        referrals: 0, referralEarnings: 0, completedTasks: [], purchasedPlans: [],
+                        miningSeconds: 0, transactions: [], blocked: false, createdAt: new Date().toISOString()
                     };
                     saveUserToCloud();
                 }
@@ -290,10 +282,7 @@
             }).catch(() => startAppLocal());
         }
         
-        function saveUserToCloud() {
-            if (!currentUser) return;
-            db.collection('users').doc(currentUser.uid).set(userData, { merge: true }).catch(e => {});
-        }
+        function saveUserToCloud() { if (currentUser) db.collection('users').doc(currentUser.uid).set(userData, { merge: true }).catch(e => {}); }
         
         function loadSettingsFromCloud() {
             db.collection('settings').doc('global').get().then(doc => {
@@ -305,8 +294,8 @@
                     SETTINGS.minWithdraw = num(cloud.minWithdraw, DEFAULT_SETTINGS.minWithdraw);
                     SETTINGS.referralPercent = num(cloud.referralPercent, DEFAULT_SETTINGS.referralPercent);
                     SETTINGS.depositAddress = cloud.depositAddress || DEFAULT_SETTINGS.depositAddress;
-                    if (cloud.plans && Array.isArray(cloud.plans) && cloud.plans.length) SETTINGS.plans = cloud.plans;
-                    if (cloud.tasks && Array.isArray(cloud.tasks) && cloud.tasks.length) SETTINGS.tasks = cloud.tasks;
+                    if (cloud.plans && cloud.plans.length) SETTINGS.plans = cloud.plans;
+                    if (cloud.tasks && cloud.tasks.length) SETTINGS.tasks = cloud.tasks;
                 } else {
                     db.collection('settings').doc('global').set(DEFAULT_SETTINGS);
                 }
@@ -319,16 +308,12 @@
             userData = {
                 id: 'local_' + Date.now(), username: 'Miner', tonBalance: 0, hashrate: 10,
                 totalEarned: 0, todayEarned: 0, referrals: 0, referralEarnings: 0,
-                completedTasks: [], purchasedPlans: [], miningSeconds: 0,
-                transactions: [], blocked: false
+                completedTasks: [], purchasedPlans: [], miningSeconds: 0, transactions: [], blocked: false
             };
             initApp();
         }
         
-        function saveUserData() {
-            if (currentUser) saveUserToCloud();
-            else localStorage.setItem('foxearn_ton_user', JSON.stringify(userData));
-        }
+        function saveUserData() { if (currentUser) saveUserToCloud(); else localStorage.setItem('foxearn_ton_user', JSON.stringify(userData)); }
         
         function initApp() {
             initAdsGram();
@@ -339,11 +324,7 @@
             renderHistory();
             setInterval(() => {
                 const today = new Date().getDate();
-                if (today !== lastDayReset) {
-                    userData.todayEarned = 0;
-                    lastDayReset = today;
-                    saveUserData();
-                }
+                if (today !== lastDayReset) { userData.todayEarned = 0; lastDayReset = today; saveUserData(); }
             }, 60000);
         }
         
@@ -371,15 +352,11 @@
             const total = num(userData.totalEarned, 0).toFixed(7);
             const projected = (hashrate * num(SETTINGS.miningSpeed, 0.0001)).toFixed(7);
             
-            setText('tonBalance', bal);
-            setText('headerBalance', bal);
-            setText('walletBalance', bal);
+            setText('tonBalance', bal); setText('headerBalance', bal); setText('walletBalance', bal);
             setText('usdValue', (num(userData.tonBalance, 0) * tonPrice).toFixed(2));
             setText('walletUsd', (num(userData.tonBalance, 0) * tonPrice).toFixed(2));
-            setText('hashrateDisplay', hashrate + ' H/s');
-            setText('homeHashrate', hashrate);
-            setText('todayEarnedDisplay', today);
-            setText('totalEarnedDisplay', total);
+            setText('hashrateDisplay', hashrate + ' H/s'); setText('homeHashrate', hashrate);
+            setText('todayEarnedDisplay', today); setText('totalEarnedDisplay', total);
             setText('projectedDaily', projected + ' TON');
             setText('adReward', num(SETTINGS.adReward, 0.01).toFixed(2));
             setText('taskAdReward', num(SETTINGS.adReward, 0.01).toFixed(2));
@@ -389,15 +366,11 @@
             
             const refLink = document.getElementById('refLink');
             if (refLink) refLink.value = 'https://t.me/TonFoxEarnBot?start=' + (userData.id || 'unknown');
-            
             const depDisplay = document.getElementById('depositAddressDisplay');
             if (depDisplay) depDisplay.value = SETTINGS.depositAddress || DEFAULT_SETTINGS.depositAddress;
         }
         
-        function setText(id, val) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = String(val);
-        }
+        function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = String(val); }
         
         function toggleMining() { if (isMining) stopMining(); else startMining(); }
         
@@ -421,16 +394,15 @@
         }
         
         function stopMining() {
-            isMining = false;
-            clearInterval(miningInterval);
-            clearInterval(timerInterval);
+            isMining = false; clearInterval(miningInterval); clearInterval(timerInterval);
             document.getElementById('mineBtn').textContent = '▶ START MINING';
-            document.getElementById('mineBtn').className = 'btn btn-start';
-            saveUserData();
+            document.getElementById('mineBtn').className = 'btn btn-start'; saveUserData();
         }
         
+        // FIXED ADS
         function watchAd() {
-            if (!adsgramInstance) { initAdsGram(); return; }
+            if (!adsgramInstance) { showToast('📺 Ad network loading, try again...'); initAdsGram(); return; }
+            showToast('📺 Loading rewarded ad...');
             const card = document.querySelector('.ad-card');
             if (card) { card.style.opacity = '0.5'; card.style.pointerEvents = 'none'; }
             adsgramInstance.show().then(() => {
@@ -451,7 +423,8 @@
         }
         
         function watchTaskAd() {
-            if (!adsgramInstance) { initAdsGram(); return; }
+            if (!adsgramInstance) { showToast('📺 Ad network loading, try again...'); initAdsGram(); return; }
+            showToast('📺 Loading rewarded ad...');
             const banner = document.querySelector('.tasks-ad-banner');
             if (banner) { banner.style.opacity = '0.5'; banner.style.pointerEvents = 'none'; }
             adsgramInstance.show().then(() => {
@@ -471,7 +444,7 @@
             });
         }
         
-        // Tasks, Plans, Wallet (same as before but using num() safely)
+        // TASKS
         function renderTasks() {
             const container = document.getElementById('tasksList');
             if (!container) return;
@@ -493,11 +466,7 @@
             if ((userData.completedTasks || []).includes(id)) return;
             const task = SETTINGS.tasks.find(t => t.id === id);
             if (!task) return;
-            if (task.isAdTask) {
-                showToast('📺 Loading ad...');
-                setTimeout(() => giveTaskReward(task), 3000);
-                return;
-            }
+            if (task.isAdTask) { showToast('📺 Loading ad...'); setTimeout(() => giveTaskReward(task), 3000); return; }
             if (task.link) window.open(task.link, '_blank');
             giveTaskReward(task);
         }
@@ -511,10 +480,10 @@
                 userData.todayEarned = num(userData.todayEarned, 0) + num(task.rewardTon, 0);
             }
             if (num(task.rewardHash, 0) > 0) userData.hashrate = num(userData.hashrate, 10) + num(task.rewardHash, 0);
-            saveUserData(); updateAllUI(); renderTasks();
-            showToast('✅ Reward granted!');
+            saveUserData(); updateAllUI(); renderTasks(); showToast('✅ Reward granted!');
         }
         
+        // PLANS
         function renderPlans() {
             const container = document.getElementById('plansList');
             if (!container) return;
@@ -540,6 +509,7 @@
             }
         }
         
+        // WALLET
         function submitWithdraw() {
             const addr = document.getElementById('withdrawAddress').value.trim();
             const amt = parseFloat(document.getElementById('withdrawAmount').value);
