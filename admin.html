@@ -58,6 +58,10 @@
         
         .toast { position: fixed; top: 20px; right: 20px; background: #1a1a2e; border-left: 4px solid #0088cc; padding: 15px; border-radius: 8px; z-index: 1000; font-size: 14px; }
         .toast.warning { border-left-color: #ff9800; }
+        .toast.error { border-left-color: #f44336; }
+        
+        .info-box { background: #0d0d20; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 12px; color: #aaa; }
+        .info-box a { color: #0088cc; }
     </style>
 </head>
 <body>
@@ -177,55 +181,54 @@
             </div>
         </div>
         
-        <!-- REFERRAL + TELEGRAM CHANNEL URL -->
+        <!-- REFERRAL (no Telegram channel URL anymore, but kept for referral) -->
         <div class="tab-content" id="tab-referral">
             <div class="section">
                 <h2>👥 Referral System</h2>
                 <div class="form-group">
                     <label>🎁 Fixed Reward per Referral (TON) - 7 decimals</label>
                     <input type="number" id="referralRewardAmount" value="0.0300000" step="0.0000001">
-                    <p style="color:#888;font-size:11px;margin-top:5px;">User gets this fixed amount when someone they referred joins via their link.</p>
                 </div>
-                <div class="form-group">
-                    <label>📢 Telegram Channel URL (for double reward)</label>
-                    <input type="text" id="telegramChannelUrl" placeholder="https://t.me/yourchannel">
-                    <p style="color:#888;font-size:11px;margin-top:5px;">Users will be asked to join this channel to double their ad rewards.</p>
-                </div>
-                <button class="btn btn-blue" onclick="saveReferralSettings()">💾 Save Referral & Channel Settings</button>
+                <button class="btn btn-blue" onclick="saveReferralSettings()">💾 Save Referral Settings</button>
             </div>
         </div>
         
-        <!-- TELEGRAM BOT CONTROLS -->
+        <!-- TELEGRAM BOT - FIXED MESSAGING -->
         <div class="tab-content" id="tab-telegram">
             <div class="section">
-                <h2>🤖 Telegram Bot Configuration</h2>
+                <h2>🤖 Telegram Bot - Send Messages</h2>
                 <div class="form-group">
                     <label>Bot Token (from @BotFather)</label>
-                    <input type="text" id="botToken" placeholder="1234567890:ABCdefGHIJKLMNOP...">
-                    <p style="color:#888;font-size:11px;">Required to send messages automatically.</p>
+                    <input type="text" id="botToken" placeholder="1234567890:ABCdefGHIJKLMNOP">
+                    <p style="color:#888;font-size:11px;">Create a bot at <a href="https://t.me/botfather" target="_blank" style="color:#0088cc;">@BotFather</a> and copy the token.</p>
                 </div>
                 <div class="form-group">
-                    <label>🎉 Welcome Message (sent when user starts the bot)</label>
-                    <textarea id="welcomeMessage" rows="3">Welcome to FoxEarn! 🦊\n\nEarn TON by mining, watching ads, and referring friends.\n\nUse our app to start earning: [link]</textarea>
-                    <p style="color:#888;font-size:11px;">Use [user_name] for user's first name, [user_id] for their ID.</p>
-                </div>
-                <div class="form-group">
-                    <label>📢 Promotion Message</label>
-                    <textarea id="promotionMessage" rows="3">🔥 New event! Double rewards this week! 🔥\n\nWatch ads and get 2x TON until Sunday.</textarea>
-                </div>
-                <div class="form-group">
-                    <label>📢 Channel ID (where to send promotions)</label>
+                    <label>📢 Channel ID or Username</label>
                     <input type="text" id="promotionChannelId" placeholder="@yourchannel or -1001234567890">
-                    <p style="color:#888;font-size:11px;">Use @username or channel ID (negative number for supergroups).</p>
+                    <div class="info-box">
+                        💡 <b>How to get Channel ID:</b><br>
+                        • Add your bot as <b>admin</b> to the channel.<br>
+                        • Send any message to the channel.<br>
+                        • Visit: <a href="https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates" target="_blank">https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates</a><br>
+                        • Find "chat" → "id" (negative number for channels).<br>
+                        • Or use @username (e.g., @mynews).
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>📨 Message Text</label>
+                    <textarea id="promotionMessage" rows="4" placeholder="Enter your promotion message here... Supports HTML: &lt;b&gt;bold&lt;/b&gt;, &lt;i&gt;italic&lt;/i&gt;, &lt;a href='https://...'&gt;link&lt;/a&gt;"></textarea>
                 </div>
                 <div class="row">
-                    <div class="col"><button class="btn btn-blue" onclick="sendTestMessage()">📨 Send Test Message to Channel</button></div>
+                    <div class="col"><button class="btn btn-blue" onclick="sendTestMessage()">📨 Send Message</button></div>
                     <div class="col"><button class="btn btn-green" onclick="saveBotSettings()">💾 Save Bot Settings</button></div>
                 </div>
-                <p style="color:#ff9800; font-size:12px; margin-top:15px;">
-                    ⚠️ For welcome messages to work, your bot must have a webhook or polling setup. 
-                    <br>Please share your bot code (bot.js / bot.py) so I can integrate these settings.
-                </p>
+                <div class="info-box" style="margin-top:15px;">
+                    ⚠️ <b>Important:</b><br>
+                    • The bot must be an <b>admin</b> of the channel to send messages.<br>
+                    • For private channels, use the numeric ID (starts with -100).<br>
+                    • For public channels, you can use @username.<br>
+                    • Messages support HTML formatting.
+                </div>
             </div>
         </div>
         
@@ -260,8 +263,7 @@
                     SETTINGS = {
                         miningSpeed: 0.00003, tonPrice: 5.20, adReward: 0.0100000, minWithdraw: 0.5,
                         referralRewardAmount: 0.0300000,
-                        telegramChannelUrl: 'https://t.me/foxearn',
-                        botToken: '', welcomeMessage: '', promotionMessage: '', promotionChannelId: '',
+                        botToken: '', promotionMessage: '', promotionChannelId: '',
                         adCooldown: 60,
                         depositAddress: 'UQD...YourWallet',
                         plans: [
@@ -285,7 +287,7 @@
         function saveSettingsToCloud() {
             db.collection('settings').doc('global').set(SETTINGS, { merge: true })
                 .then(() => showToast('✅ Settings saved to cloud!'))
-                .catch(e => showToast('❌ Error: ' + e.message));
+                .catch(e => showToast('❌ Error: ' + e.message, 'error'));
         }
         
         function switchTab(name) {
@@ -305,11 +307,9 @@
             if (document.getElementById('adRewardAds')) document.getElementById('adRewardAds').value = SETTINGS.adReward;
             if (SETTINGS.minWithdraw) document.getElementById('minWithdraw').value = SETTINGS.minWithdraw;
             if (SETTINGS.referralRewardAmount) document.getElementById('referralRewardAmount').value = SETTINGS.referralRewardAmount;
-            if (SETTINGS.telegramChannelUrl) document.getElementById('telegramChannelUrl').value = SETTINGS.telegramChannelUrl;
             if (SETTINGS.adCooldown) document.getElementById('adCooldown').value = SETTINGS.adCooldown;
             if (SETTINGS.depositAddress) document.getElementById('depositAddress').value = SETTINGS.depositAddress;
             if (SETTINGS.botToken) document.getElementById('botToken').value = SETTINGS.botToken;
-            if (SETTINGS.welcomeMessage) document.getElementById('welcomeMessage').value = SETTINGS.welcomeMessage;
             if (SETTINGS.promotionMessage) document.getElementById('promotionMessage').value = SETTINGS.promotionMessage;
             if (SETTINGS.promotionChannelId) document.getElementById('promotionChannelId').value = SETTINGS.promotionChannelId;
         }
@@ -468,51 +468,71 @@
             });
         }
         
-        // === Referral + Telegram Channel ===
+        // === Referral ===
         function saveReferralSettings() {
             SETTINGS.referralRewardAmount = parseFloat(document.getElementById('referralRewardAmount').value) || 0.0300000;
-            SETTINGS.telegramChannelUrl = document.getElementById('telegramChannelUrl').value.trim() || 'https://t.me/foxearn';
             saveSettingsToCloud();
         }
         
-        // === Bot Settings & Sending ===
+        // === Bot Settings & Sending (FIXED) ===
         function saveBotSettings() {
             SETTINGS.botToken = document.getElementById('botToken').value.trim();
-            SETTINGS.welcomeMessage = document.getElementById('welcomeMessage').value;
             SETTINGS.promotionMessage = document.getElementById('promotionMessage').value;
             SETTINGS.promotionChannelId = document.getElementById('promotionChannelId').value.trim();
             saveSettingsToCloud();
             showToast('✅ Bot settings saved!');
         }
         
-        function sendTestMessage() {
+        async function sendTestMessage() {
             const token = document.getElementById('botToken').value.trim();
             const channelId = document.getElementById('promotionChannelId').value.trim();
-            const message = document.getElementById('promotionMessage').value.trim() || 'Test message from FoxEarn admin.';
-            if (!token) { showToast('❌ Please set Bot Token first!'); return; }
-            if (!channelId) { showToast('❌ Please set Channel ID!'); return; }
+            const message = document.getElementById('promotionMessage').value.trim();
             
-            // Call Telegram API directly from client (not secure for production, but works for testing)
+            if (!token) { showToast('❌ Please enter Bot Token first!', 'error'); return; }
+            if (!channelId) { showToast('❌ Please enter Channel ID or Username!', 'error'); return; }
+            if (!message) { showToast('❌ Please enter a message to send!', 'error'); return; }
+            
+            showToast('📨 Sending message...', '');
+            
             const url = `https://api.telegram.org/bot${token}/sendMessage`;
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: channelId, text: message, parse_mode: 'HTML' })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.ok) showToast('✅ Message sent to channel!');
-                else showToast('❌ Error: ' + data.description);
-            })
-            .catch(err => showToast('❌ Network error: ' + err.message));
+            const payload = {
+                chat_id: channelId,
+                text: message,
+                parse_mode: 'HTML',
+                disable_web_page_preview: false
+            };
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (data.ok) {
+                    showToast('✅ Message sent successfully!', '');
+                } else {
+                    let errorMsg = data.description || 'Unknown error';
+                    if (errorMsg.includes('chat not found')) {
+                        errorMsg = 'Channel not found. Make sure the bot is admin and the ID/username is correct.';
+                    } else if (errorMsg.includes('Forbidden')) {
+                        errorMsg = 'Bot is not admin of this channel. Add bot as admin first.';
+                    }
+                    showToast('❌ Error: ' + errorMsg, 'error');
+                }
+            } catch (err) {
+                showToast('❌ Network error: ' + err.message, 'error');
+            }
         }
         
         function showToast(msg, type = '') {
             const t = document.createElement('div'); 
-            t.className = 'toast' + (type === 'warning' ? ' warning' : ''); 
+            t.className = 'toast';
+            if (type === 'error') t.classList.add('error');
+            else if (type === 'warning') t.classList.add('warning');
             t.textContent = msg;
             document.getElementById('toastContainer').appendChild(t);
-            setTimeout(() => t.remove(), 2500);
+            setTimeout(() => t.remove(), 3000);
         }
         
         // Override switchTab to refresh withdrawals
