@@ -181,7 +181,7 @@
             </div>
         </div>
         
-        <!-- REFERRAL (no Telegram channel URL anymore, but kept for referral) -->
+        <!-- REFERRAL -->
         <div class="tab-content" id="tab-referral">
             <div class="section">
                 <h2>👥 Referral System</h2>
@@ -193,7 +193,7 @@
             </div>
         </div>
         
-        <!-- TELEGRAM BOT - FIXED MESSAGING -->
+        <!-- TELEGRAM BOT - WITH CORS PROXY -->
         <div class="tab-content" id="tab-telegram">
             <div class="section">
                 <h2>🤖 Telegram Bot - Send Messages</h2>
@@ -218,6 +218,16 @@
                     <label>📨 Message Text</label>
                     <textarea id="promotionMessage" rows="4" placeholder="Enter your promotion message here... Supports HTML: &lt;b&gt;bold&lt;/b&gt;, &lt;i&gt;italic&lt;/i&gt;, &lt;a href='https://...'&gt;link&lt;/a&gt;"></textarea>
                 </div>
+                
+                <!-- CORS Proxy Option -->
+                <div class="checkbox-group">
+                    <input type="checkbox" id="useProxy" checked>
+                    <label for="useProxy">🌐 Use CORS proxy (fixes "Network failed" error)</label>
+                </div>
+                <div class="info-box" style="margin-bottom:10px;">
+                    If messages fail to send, keep this checkbox ON. It routes requests through a free proxy that bypasses browser restrictions.
+                </div>
+                
                 <div class="row">
                     <div class="col"><button class="btn btn-blue" onclick="sendTestMessage()">📨 Send Message</button></div>
                     <div class="col"><button class="btn btn-green" onclick="saveBotSettings()">💾 Save Bot Settings</button></div>
@@ -227,7 +237,8 @@
                     • The bot must be an <b>admin</b> of the channel to send messages.<br>
                     • For private channels, use the numeric ID (starts with -100).<br>
                     • For public channels, you can use @username.<br>
-                    • Messages support HTML formatting.
+                    • Messages support HTML formatting.<br>
+                    • The free proxy may have rate limits – for heavy usage, deploy your own proxy.
                 </div>
             </div>
         </div>
@@ -474,7 +485,7 @@
             saveSettingsToCloud();
         }
         
-        // === Bot Settings & Sending (FIXED) ===
+        // === Bot Settings & Sending (WITH CORS PROXY) ===
         function saveBotSettings() {
             SETTINGS.botToken = document.getElementById('botToken').value.trim();
             SETTINGS.promotionMessage = document.getElementById('promotionMessage').value;
@@ -487,6 +498,7 @@
             const token = document.getElementById('botToken').value.trim();
             const channelId = document.getElementById('promotionChannelId').value.trim();
             const message = document.getElementById('promotionMessage').value.trim();
+            const useProxy = document.getElementById('useProxy').checked;
             
             if (!token) { showToast('❌ Please enter Bot Token first!', 'error'); return; }
             if (!channelId) { showToast('❌ Please enter Channel ID or Username!', 'error'); return; }
@@ -494,7 +506,12 @@
             
             showToast('📨 Sending message...', '');
             
-            const url = `https://api.telegram.org/bot${token}/sendMessage`;
+            let url = `https://api.telegram.org/bot${token}/sendMessage`;
+            if (useProxy) {
+                // Use a public CORS proxy (cors-anywhere)
+                url = `https://cors-anywhere.herokuapp.com/${url}`;
+            }
+            
             const payload = {
                 chat_id: channelId,
                 text: message,
@@ -517,11 +534,17 @@
                         errorMsg = 'Channel not found. Make sure the bot is admin and the ID/username is correct.';
                     } else if (errorMsg.includes('Forbidden')) {
                         errorMsg = 'Bot is not admin of this channel. Add bot as admin first.';
+                    } else if (errorMsg.includes('Wrong chat identifier')) {
+                        errorMsg = 'Invalid channel ID/username. Use numeric ID (starts with -100) or @username.';
                     }
                     showToast('❌ Error: ' + errorMsg, 'error');
                 }
             } catch (err) {
-                showToast('❌ Network error: ' + err.message, 'error');
+                let errorMsg = err.message;
+                if (useProxy && errorMsg.includes('Failed to fetch')) {
+                    errorMsg = 'CORS proxy failed. Try disabling proxy or check your internet. You may need to request access to the proxy at https://cors-anywhere.herokuapp.com/ (click "Request temporary access")';
+                }
+                showToast('❌ Network error: ' + errorMsg, 'error');
             }
         }
         
