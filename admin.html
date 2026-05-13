@@ -81,7 +81,7 @@
             <div class="section">
                 <h2>⛏️ Mining Configuration</h2>
                 <div class="row">
-                    <div class="col"><div class="form-group"><label>Mining Speed (TON/Hash/24h)</label><input type="number" id="miningSpeed" value="0.0001" step="0.0001"></div></div>
+                    <div class="col"><div class="form-group"><label>TON per Hash per 24h (1 H/s = X TON/day)</label><input type="number" id="miningSpeed" value="0.00003" step="0.0000001"></div></div>
                     <div class="col"><div class="form-group"><label>TON Price (USD)</label><input type="number" id="tonPrice" value="5.20" step="0.01"></div></div>
                 </div>
                 <div class="row">
@@ -175,7 +175,7 @@
             </div>
         </div>
         
-        <!-- REFERRAL - CHANGED to FIXED AMOUNT -->
+        <!-- REFERRAL - FIXED AMOUNT -->
         <div class="tab-content" id="tab-referral">
             <div class="section">
                 <h2>👥 Referral System</h2>
@@ -217,14 +217,14 @@
                     SETTINGS = doc.data();
                 } else {
                     SETTINGS = {
-                        miningSpeed: 0.0001, tonPrice: 5.20, adReward: 0.0100000, minWithdraw: 0.5,
+                        miningSpeed: 0.00003, tonPrice: 5.20, adReward: 0.0100000, minWithdraw: 0.5,
                         referralRewardAmount: 0.0300000,
                         adCooldown: 60,
                         depositAddress: 'UQD...YourWallet',
                         plans: [
-                            { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0050000 TON', icon:'🥉' },
-                            { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0500000 TON', icon:'🥈' },
-                            { id:'plan3', name:'🥇 Max', price:50, hashrate:5000, daily:'0.5000000 TON', icon:'🥇' }
+                            { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0015000 TON', icon:'🥉' },
+                            { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0150000 TON', icon:'🥈' },
+                            { id:'plan3', name:'🥇 Max', price:50, hashrate:5000, daily:'0.1500000 TON', icon:'🥇' }
                         ],
                         tasks: [
                             { id:'t0', title:'📺 Watch Ad', desc:'Watch a short ad', rewardTon:0.01, rewardHash:0, icon:'📺', link:'', isAdTask:true },
@@ -270,7 +270,7 @@
         
         // === Mining Settings (with deposit address) ===
         function saveMiningSettings() {
-            SETTINGS.miningSpeed = parseFloat(document.getElementById('miningSpeed').value) || 0.0001;
+            SETTINGS.miningSpeed = parseFloat(document.getElementById('miningSpeed').value) || 0.00003;
             SETTINGS.tonPrice = parseFloat(document.getElementById('tonPrice').value) || 5.20;
             SETTINGS.adReward = parseFloat(document.getElementById('adReward').value) || 0.0100000;
             SETTINGS.minWithdraw = parseFloat(document.getElementById('minWithdraw').value) || 0.5;
@@ -384,7 +384,6 @@
             });
         }
         
-        // Auto-refresh withdrawals every 10 seconds when on that tab
         function startWithdrawalRefresh() {
             if (withdrawalRefreshInterval) clearInterval(withdrawalRefreshInterval);
             withdrawalRefreshInterval = setInterval(() => {
