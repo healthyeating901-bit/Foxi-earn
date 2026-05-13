@@ -35,6 +35,7 @@
         .btn-green { background: #4caf50; }
         .btn-red { background: #f44336; }
         .btn-purple { background: #9c27b0; }
+        .btn-orange { background: #ff9800; }
         
         .row { display: flex; gap: 10px; flex-wrap: wrap; }
         .col { flex: 1; min-width: 150px; }
@@ -74,9 +75,10 @@
             <button class="tab-btn" onclick="switchTab('ads')">📺 Ads</button>
             <button class="tab-btn" onclick="switchTab('withdrawals')">💸 Payouts</button>
             <button class="tab-btn" onclick="switchTab('referral')">👥 Referral</button>
+            <button class="tab-btn" onclick="switchTab('telegram')">🤖 Telegram Bot</button>
         </div>
         
-        <!-- MINING SETTINGS (includes deposit address) -->
+        <!-- MINING SETTINGS -->
         <div class="tab-content active" id="tab-mining">
             <div class="section">
                 <h2>⛏️ Mining Configuration</h2>
@@ -117,7 +119,7 @@
             </div>
         </div>
         
-        <!-- TASKS MANAGEMENT - DUAL REWARDS -->
+        <!-- TASKS MANAGEMENT -->
         <div class="tab-content" id="tab-tasks">
             <div class="section">
                 <h2>📝 Tasks (TON + Hashrate Rewards)</h2>
@@ -175,7 +177,7 @@
             </div>
         </div>
         
-        <!-- REFERRAL - FIXED AMOUNT -->
+        <!-- REFERRAL + TELEGRAM CHANNEL URL -->
         <div class="tab-content" id="tab-referral">
             <div class="section">
                 <h2>👥 Referral System</h2>
@@ -184,7 +186,46 @@
                     <input type="number" id="referralRewardAmount" value="0.0300000" step="0.0000001">
                     <p style="color:#888;font-size:11px;margin-top:5px;">User gets this fixed amount when someone they referred joins via their link.</p>
                 </div>
-                <button class="btn btn-blue" onclick="saveReferralSettings()">💾 Save Referral Settings</button>
+                <div class="form-group">
+                    <label>📢 Telegram Channel URL (for double reward)</label>
+                    <input type="text" id="telegramChannelUrl" placeholder="https://t.me/yourchannel">
+                    <p style="color:#888;font-size:11px;margin-top:5px;">Users will be asked to join this channel to double their ad rewards.</p>
+                </div>
+                <button class="btn btn-blue" onclick="saveReferralSettings()">💾 Save Referral & Channel Settings</button>
+            </div>
+        </div>
+        
+        <!-- TELEGRAM BOT CONTROLS -->
+        <div class="tab-content" id="tab-telegram">
+            <div class="section">
+                <h2>🤖 Telegram Bot Configuration</h2>
+                <div class="form-group">
+                    <label>Bot Token (from @BotFather)</label>
+                    <input type="text" id="botToken" placeholder="1234567890:ABCdefGHIJKLMNOP...">
+                    <p style="color:#888;font-size:11px;">Required to send messages automatically.</p>
+                </div>
+                <div class="form-group">
+                    <label>🎉 Welcome Message (sent when user starts the bot)</label>
+                    <textarea id="welcomeMessage" rows="3">Welcome to FoxEarn! 🦊\n\nEarn TON by mining, watching ads, and referring friends.\n\nUse our app to start earning: [link]</textarea>
+                    <p style="color:#888;font-size:11px;">Use [user_name] for user's first name, [user_id] for their ID.</p>
+                </div>
+                <div class="form-group">
+                    <label>📢 Promotion Message</label>
+                    <textarea id="promotionMessage" rows="3">🔥 New event! Double rewards this week! 🔥\n\nWatch ads and get 2x TON until Sunday.</textarea>
+                </div>
+                <div class="form-group">
+                    <label>📢 Channel ID (where to send promotions)</label>
+                    <input type="text" id="promotionChannelId" placeholder="@yourchannel or -1001234567890">
+                    <p style="color:#888;font-size:11px;">Use @username or channel ID (negative number for supergroups).</p>
+                </div>
+                <div class="row">
+                    <div class="col"><button class="btn btn-blue" onclick="sendTestMessage()">📨 Send Test Message to Channel</button></div>
+                    <div class="col"><button class="btn btn-green" onclick="saveBotSettings()">💾 Save Bot Settings</button></div>
+                </div>
+                <p style="color:#ff9800; font-size:12px; margin-top:15px;">
+                    ⚠️ For welcome messages to work, your bot must have a webhook or polling setup. 
+                    <br>Please share your bot code (bot.js / bot.py) so I can integrate these settings.
+                </p>
             </div>
         </div>
         
@@ -219,6 +260,8 @@
                     SETTINGS = {
                         miningSpeed: 0.00003, tonPrice: 5.20, adReward: 0.0100000, minWithdraw: 0.5,
                         referralRewardAmount: 0.0300000,
+                        telegramChannelUrl: 'https://t.me/foxearn',
+                        botToken: '', welcomeMessage: '', promotionMessage: '', promotionChannelId: '',
                         adCooldown: 60,
                         depositAddress: 'UQD...YourWallet',
                         plans: [
@@ -262,13 +305,18 @@
             if (document.getElementById('adRewardAds')) document.getElementById('adRewardAds').value = SETTINGS.adReward;
             if (SETTINGS.minWithdraw) document.getElementById('minWithdraw').value = SETTINGS.minWithdraw;
             if (SETTINGS.referralRewardAmount) document.getElementById('referralRewardAmount').value = SETTINGS.referralRewardAmount;
+            if (SETTINGS.telegramChannelUrl) document.getElementById('telegramChannelUrl').value = SETTINGS.telegramChannelUrl;
             if (SETTINGS.adCooldown) document.getElementById('adCooldown').value = SETTINGS.adCooldown;
             if (SETTINGS.depositAddress) document.getElementById('depositAddress').value = SETTINGS.depositAddress;
+            if (SETTINGS.botToken) document.getElementById('botToken').value = SETTINGS.botToken;
+            if (SETTINGS.welcomeMessage) document.getElementById('welcomeMessage').value = SETTINGS.welcomeMessage;
+            if (SETTINGS.promotionMessage) document.getElementById('promotionMessage').value = SETTINGS.promotionMessage;
+            if (SETTINGS.promotionChannelId) document.getElementById('promotionChannelId').value = SETTINGS.promotionChannelId;
         }
         
         function renderAllLists() { renderAdminPlans(); renderAdminTasks(); }
         
-        // === Mining Settings (with deposit address) ===
+        // === Mining Settings ===
         function saveMiningSettings() {
             SETTINGS.miningSpeed = parseFloat(document.getElementById('miningSpeed').value) || 0.00003;
             SETTINGS.tonPrice = parseFloat(document.getElementById('tonPrice').value) || 5.20;
@@ -359,7 +407,7 @@
             saveSettingsToCloud();
         }
         
-        // === Withdrawals - auto refresh ===
+        // === Withdrawals ===
         let withdrawalRefreshInterval = null;
         function renderWithdrawals() {
             const c = document.getElementById('withdrawalsList');
@@ -420,10 +468,43 @@
             });
         }
         
-        // === Referral - FIXED AMOUNT ===
+        // === Referral + Telegram Channel ===
         function saveReferralSettings() {
             SETTINGS.referralRewardAmount = parseFloat(document.getElementById('referralRewardAmount').value) || 0.0300000;
+            SETTINGS.telegramChannelUrl = document.getElementById('telegramChannelUrl').value.trim() || 'https://t.me/foxearn';
             saveSettingsToCloud();
+        }
+        
+        // === Bot Settings & Sending ===
+        function saveBotSettings() {
+            SETTINGS.botToken = document.getElementById('botToken').value.trim();
+            SETTINGS.welcomeMessage = document.getElementById('welcomeMessage').value;
+            SETTINGS.promotionMessage = document.getElementById('promotionMessage').value;
+            SETTINGS.promotionChannelId = document.getElementById('promotionChannelId').value.trim();
+            saveSettingsToCloud();
+            showToast('✅ Bot settings saved!');
+        }
+        
+        function sendTestMessage() {
+            const token = document.getElementById('botToken').value.trim();
+            const channelId = document.getElementById('promotionChannelId').value.trim();
+            const message = document.getElementById('promotionMessage').value.trim() || 'Test message from FoxEarn admin.';
+            if (!token) { showToast('❌ Please set Bot Token first!'); return; }
+            if (!channelId) { showToast('❌ Please set Channel ID!'); return; }
+            
+            // Call Telegram API directly from client (not secure for production, but works for testing)
+            const url = `https://api.telegram.org/bot${token}/sendMessage`;
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: channelId, text: message, parse_mode: 'HTML' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) showToast('✅ Message sent to channel!');
+                else showToast('❌ Error: ' + data.description);
+            })
+            .catch(err => showToast('❌ Network error: ' + err.message));
         }
         
         function showToast(msg, type = '') {
@@ -434,7 +515,7 @@
             setTimeout(() => t.remove(), 2500);
         }
         
-        // Override switchTab to refresh withdrawals when needed
+        // Override switchTab to refresh withdrawals
         const originalSwitchTab = switchTab;
         window.switchTab = function(name) {
             originalSwitchTab(name);
