@@ -56,6 +56,7 @@
         .checkbox-group label { color: #f5576c; font-size: 13px; text-transform: none; margin: 0; }
         
         .toast { position: fixed; top: 20px; right: 20px; background: #1a1a2e; border-left: 4px solid #0088cc; padding: 15px; border-radius: 8px; z-index: 1000; font-size: 14px; }
+        .toast.warning { border-left-color: #ff9800; }
     </style>
 </head>
 <body>
@@ -85,7 +86,7 @@
                 </div>
                 <div class="row">
                     <div class="col"><div class="form-group"><label>Min Withdraw (TON)</label><input type="number" id="minWithdraw" value="0.5" step="0.1"></div></div>
-                    <div class="col"><div class="form-group"><label>Ad Reward (TON/ad)</label><input type="number" id="adReward" value="0.01" step="0.0001"></div></div>
+                    <div class="col"><div class="form-group"><label>Ad Reward (TON/ad) - 7 decimals</label><input type="number" id="adReward" value="0.0100000" step="0.0000001"></div></div>
                 </div>
                 <div class="form-group">
                     <label>💎 Deposit TON Wallet Address</label>
@@ -134,7 +135,7 @@
                     
                     <h4 style="color:#f7931a;margin:10px 0;" id="rewardHeader">🎁 Rewards (Set both or one)</h4>
                     <div class="row" id="rewardRow">
-                        <div class="col"><div class="form-group"><label>💰 TON Reward</label><input type="number" id="newTaskRewardTon" value="0.01" step="0.001"></div></div>
+                        <div class="col"><div class="form-group"><label>💰 TON Reward</label><input type="number" id="newTaskRewardTon" value="0.0100000" step="0.0000001"></div></div>
                         <div class="col"><div class="form-group"><label>⚡ Hashrate Reward (H/s)</label><input type="number" id="newTaskRewardHash" value="0" step="1"></div></div>
                     </div>
                     
@@ -160,7 +161,7 @@
                 <h2>📺 Ad Settings</h2>
                 <div class="form-group"><label>AdSterra / Monetag / AdsGram Code</label><textarea id="adCode" placeholder="Paste your ad script here..."></textarea></div>
                 <div class="form-group"><label>Ad Cooldown (seconds)</label><input type="number" id="adCooldown" value="60"></div>
-                <div class="form-group"><label>Ad Reward (TON)</label><input type="number" id="adRewardAds" value="0.01" step="0.0001"></div>
+                <div class="form-group"><label>Ad Reward (TON) - 7 decimals</label><input type="number" id="adRewardAds" value="0.0100000" step="0.0000001"></div>
                 <div class="form-group"><label>AdsGram Block ID</label><input type="text" id="adsgramBlockId" placeholder="e.g., 29232"></div>
                 <button class="btn btn-purple" onclick="saveAdSettings()">💾 Save Ad Settings</button>
             </div>
@@ -174,12 +175,16 @@
             </div>
         </div>
         
-        <!-- REFERRAL -->
+        <!-- REFERRAL - CHANGED to FIXED AMOUNT -->
         <div class="tab-content" id="tab-referral">
             <div class="section">
-                <h2>👥 Referral</h2>
-                <div class="form-group"><label>Commission (%)</label><input type="number" id="referralPercent" value="10"></div>
-                <button class="btn btn-blue" onclick="saveReferralSettings()">💾 Save</button>
+                <h2>👥 Referral System</h2>
+                <div class="form-group">
+                    <label>🎁 Fixed Reward per Referral (TON) - 7 decimals</label>
+                    <input type="number" id="referralRewardAmount" value="0.0300000" step="0.0000001">
+                    <p style="color:#888;font-size:11px;margin-top:5px;">User gets this fixed amount when someone they referred joins via their link.</p>
+                </div>
+                <button class="btn btn-blue" onclick="saveReferralSettings()">💾 Save Referral Settings</button>
             </div>
         </div>
         
@@ -212,8 +217,9 @@
                     SETTINGS = doc.data();
                 } else {
                     SETTINGS = {
-                        miningSpeed: 0.0001, tonPrice: 5.20, adReward: 0.01, minWithdraw: 0.5,
-                        referralPercent: 10, adCooldown: 60,
+                        miningSpeed: 0.0001, tonPrice: 5.20, adReward: 0.0100000, minWithdraw: 0.5,
+                        referralRewardAmount: 0.0300000,
+                        adCooldown: 60,
                         depositAddress: 'UQD...YourWallet',
                         plans: [
                             { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0050000 TON', icon:'🥉' },
@@ -255,7 +261,7 @@
             if (SETTINGS.adReward) document.getElementById('adReward').value = SETTINGS.adReward;
             if (document.getElementById('adRewardAds')) document.getElementById('adRewardAds').value = SETTINGS.adReward;
             if (SETTINGS.minWithdraw) document.getElementById('minWithdraw').value = SETTINGS.minWithdraw;
-            if (SETTINGS.referralPercent) document.getElementById('referralPercent').value = SETTINGS.referralPercent;
+            if (SETTINGS.referralRewardAmount) document.getElementById('referralRewardAmount').value = SETTINGS.referralRewardAmount;
             if (SETTINGS.adCooldown) document.getElementById('adCooldown').value = SETTINGS.adCooldown;
             if (SETTINGS.depositAddress) document.getElementById('depositAddress').value = SETTINGS.depositAddress;
         }
@@ -266,7 +272,7 @@
         function saveMiningSettings() {
             SETTINGS.miningSpeed = parseFloat(document.getElementById('miningSpeed').value) || 0.0001;
             SETTINGS.tonPrice = parseFloat(document.getElementById('tonPrice').value) || 5.20;
-            SETTINGS.adReward = parseFloat(document.getElementById('adReward').value) || 0.01;
+            SETTINGS.adReward = parseFloat(document.getElementById('adReward').value) || 0.0100000;
             SETTINGS.minWithdraw = parseFloat(document.getElementById('minWithdraw').value) || 0.5;
             SETTINGS.depositAddress = document.getElementById('depositAddress').value.trim() || 'UQD...YourWallet';
             saveSettingsToCloud();
@@ -302,7 +308,7 @@
             if (!SETTINGS.tasks || SETTINGS.tasks.length === 0) { c.innerHTML = '<p style="color:#888;">No tasks</p>'; return; }
             c.innerHTML = SETTINGS.tasks.map((t, i) => {
                 let rewards = '';
-                if (t.rewardTon > 0) rewards += '<span class="badge badge-blue">💰 +' + t.rewardTon + ' TON</span> ';
+                if (t.rewardTon > 0) rewards += '<span class="badge badge-blue">💰 +' + t.rewardTon.toFixed(7) + ' TON</span> ';
                 if (t.rewardHash > 0) rewards += '<span class="badge badge-orange">⚡ +' + t.rewardHash + ' H/s</span> ';
                 if (t.isAdTask) rewards += '<span class="badge badge-pink">📺 Ad Task</span> ';
                 return `<div class="card-item">
@@ -339,6 +345,8 @@
             document.getElementById('newTaskTitle').value = '';
             document.getElementById('newTaskDesc').value = '';
             document.getElementById('newTaskIsAd').checked = false;
+            document.getElementById('newTaskRewardTon').value = '0.0100000';
+            document.getElementById('newTaskRewardHash').value = '0';
         }
         function deleteTask(i) { if (confirm('Delete?')) { SETTINGS.tasks.splice(i, 1); saveSettingsToCloud(); renderAdminTasks(); } }
         
@@ -346,12 +354,13 @@
         function saveAdSettings() {
             SETTINGS.adCode = document.getElementById('adCode').value;
             SETTINGS.adCooldown = parseInt(document.getElementById('adCooldown').value) || 60;
-            if (document.getElementById('adRewardAds')) SETTINGS.adReward = parseFloat(document.getElementById('adRewardAds').value) || 0.01;
+            if (document.getElementById('adRewardAds')) SETTINGS.adReward = parseFloat(document.getElementById('adRewardAds').value) || 0.0100000;
             if (document.getElementById('adsgramBlockId')) SETTINGS.adsgramBlockId = document.getElementById('adsgramBlockId').value;
             saveSettingsToCloud();
         }
         
-        // === Withdrawals ===
+        // === Withdrawals - auto refresh ===
+        let withdrawalRefreshInterval = null;
         function renderWithdrawals() {
             const c = document.getElementById('withdrawalsList');
             db.collection('users').get().then(snapshot => {
@@ -374,6 +383,18 @@
                     </div>`).join('');
             });
         }
+        
+        // Auto-refresh withdrawals every 10 seconds when on that tab
+        function startWithdrawalRefresh() {
+            if (withdrawalRefreshInterval) clearInterval(withdrawalRefreshInterval);
+            withdrawalRefreshInterval = setInterval(() => {
+                const activeTab = document.querySelector('.tab-content.active').id;
+                if (activeTab === 'tab-withdrawals') {
+                    renderWithdrawals();
+                }
+            }, 10000);
+        }
+        
         function approveWithdraw(userId, date) {
             db.collection('users').doc(userId).get().then(doc => {
                 const user = doc.data();
@@ -381,7 +402,7 @@
                 if (tx) {
                     tx.status = 'approved';
                     db.collection('users').doc(userId).update({ transactions: user.transactions });
-                    showToast('✅ Approved!');
+                    showToast('✅ Withdrawal approved!');
                     renderWithdrawals();
                 }
             });
@@ -392,27 +413,37 @@
                 const tx = user.transactions.find(t => t.date === date && t.type === 'withdraw' && t.status === 'pending');
                 if (tx) {
                     tx.status = 'rejected';
-                    user.tonBalance += tx.amount;
+                    user.tonBalance = (user.tonBalance || 0) + tx.amount;
                     db.collection('users').doc(userId).update({ transactions: user.transactions, tonBalance: user.tonBalance });
-                    showToast('❌ Rejected. TON refunded.');
+                    showToast('❌ Withdrawal rejected. TON refunded.', 'warning');
                     renderWithdrawals();
                 }
             });
         }
         
-        // === Referral ===
+        // === Referral - FIXED AMOUNT ===
         function saveReferralSettings() {
-            SETTINGS.referralPercent = parseInt(document.getElementById('referralPercent').value) || 10;
+            SETTINGS.referralRewardAmount = parseFloat(document.getElementById('referralRewardAmount').value) || 0.0300000;
             saveSettingsToCloud();
         }
         
-        function showToast(msg) {
-            const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+        function showToast(msg, type = '') {
+            const t = document.createElement('div'); 
+            t.className = 'toast' + (type === 'warning' ? ' warning' : ''); 
+            t.textContent = msg;
             document.getElementById('toastContainer').appendChild(t);
             setTimeout(() => t.remove(), 2500);
         }
         
+        // Override switchTab to refresh withdrawals when needed
+        const originalSwitchTab = switchTab;
+        window.switchTab = function(name) {
+            originalSwitchTab(name);
+            if (name === 'withdrawals') renderWithdrawals();
+        };
+        
         loadSettings();
+        startWithdrawalRefresh();
     </script>
 </body>
 </html>
