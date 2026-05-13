@@ -37,9 +37,8 @@
         .btn { padding: 15px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; transition: all 0.2s; color: white; }
         .btn:active { transform: scale(0.97); }
         .btn-start { background: #4caf50; font-size: 18px; }
-        .btn-stop { background: #f44336; font-size: 18px; animation: pulse 1.5s infinite; }
+        /* .btn-stop removed - no stop button needed */
         .btn-ton { background: #0088cc; }
-        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(244,67,54,0.5); } 50% { box-shadow: 0 0 20px 5px rgba(244,67,54,0.3); } }
         
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a2e; display: flex; justify-content: space-around; padding: 10px; border-top: 1px solid #333; z-index: 100; max-width: 430px; margin: 0 auto; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: #888; cursor: pointer; font-size: 11px; gap: 4px; }
@@ -76,7 +75,6 @@
         .tasks-ad-banner .ad-text { color: #f5576c; font-weight: bold; }
         .tasks-ad-banner .ad-reward { color: #4caf50; font-size: 12px; margin-top: 3px; }
         
-        /* New button ad style */
         .tasks-ad-button { background: linear-gradient(135deg, #0088cc, #0055aa); border-radius: 30px; padding: 14px; text-align: center; margin-bottom: 15px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .tasks-ad-button:active { transform: scale(0.97); }
         .tasks-ad-button .ad-text { font-size: 16px; }
@@ -89,6 +87,10 @@
         .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 25px; z-index: 1000; font-size: 14px; font-weight: bold; }
         
         input, select { width: 100%; padding: 12px; background: #0d0d20; border: 1px solid #333; border-radius: 10px; color: white; margin-bottom: 10px; font-size: 14px; }
+        
+        /* Mining status indicator */
+        .mining-status { display: inline-block; width: 10px; height: 10px; background-color: #4caf50; border-radius: 50%; margin-right: 5px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
     </style>
 </head>
 <body>
@@ -113,18 +115,18 @@
             </div>
             
             <div class="card mining-card">
-                <h3>⛏️ TON Mining</h3>
+                <h3>⛏️ TON Mining <span class="mining-status"></span> <span style="font-size:12px;color:#4caf50;">Active</span></h3>
                 <div class="mining-stats">
                     <div class="mining-stat"><div class="label">⚡ Power</div><div class="value" id="hashrateDisplay">10 H/s</div></div>
                     <div class="mining-stat"><div class="label">📅 Today</div><div class="value orange" id="todayEarnedDisplay">0.0000000</div></div>
-                    <div class="mining-stat"><div class="label">⏱️ Time</div><div class="value" id="miningTimer">00:00:00</div></div>
+                    <div class="mining-stat"><div class="label">⏱️ Session</div><div class="value" id="miningTimer">00:00:00</div></div>
                 </div>
                 <div class="mining-bar-container"><div class="mining-bar" id="miningBar"></div></div>
                 <div style="display:flex; justify-content:space-between; font-size:12px; color:#888; margin-bottom:10px;">
-                    <span>📅 Projected: <b id="projectedDaily" style="color:#f7931a;">0.0010000 TON</b></span>
-                    <span>💰 Total: <b id="totalEarnedDisplay" style="color:#4fc3f7;">0.0000000</b></span>
+                    <span>📅 Daily Rate: <b id="dailyRateDisplay" style="color:#f7931a;">0.0000 TON/day</b></span>
+                    <span>💰 Total Earned: <b id="totalEarnedDisplay" style="color:#4fc3f7;">0.0000000</b></span>
                 </div>
-                <button class="btn btn-start" id="mineBtn" onclick="toggleMining()">▶ START MINING</button>
+                <!-- No start/stop button - mining is always active -->
             </div>
         </div>
 
@@ -132,34 +134,29 @@
         <div class="page" id="tasksPage">
             <h3 style="margin-bottom:15px;">📋 Earn Rewards</h3>
             
-            <!-- Banner Ad 1 (Top) -->
             <div class="tasks-ad-banner" onclick="watchTaskAd('banner1')">
                 <div class="ad-icon">📺</div>
                 <div class="ad-text">Watch Banner Ad #1 & Earn</div>
                 <div class="ad-reward">+<span id="taskAdReward1">0.0100000</span> TON</div>
             </div>
 
-            <!-- Banner Ad 2 (Middle) -->
             <div class="tasks-ad-banner" onclick="watchTaskAd('banner2')">
                 <div class="ad-icon">🎬</div>
                 <div class="ad-text">Watch Banner Ad #2 & Earn</div>
                 <div class="ad-reward">+<span id="taskAdReward2">0.0100000</span> TON</div>
             </div>
 
-            <!-- Button Ad (Fixed "second button") -->
             <div class="tasks-ad-button" onclick="watchButtonAd()">
                 <div class="ad-text">🔘 Click Button Ad & Earn</div>
                 <div class="ad-reward">+<span id="buttonAdReward">0.0100000</span> TON</div>
             </div>
 
-            <!-- Banner Ad 3 (Bottom) -->
             <div class="tasks-ad-banner" onclick="watchTaskAd('banner3')">
                 <div class="ad-icon">📺</div>
                 <div class="ad-text">Watch Banner Ad #3 & Earn</div>
                 <div class="ad-reward">+<span id="taskAdReward3">0.0100000</span> TON</div>
             </div>
 
-            <!-- Standard Tasks List -->
             <div id="tasksList"></div>
         </div>
 
@@ -226,7 +223,7 @@
 
     <script>
         // ============================================
-        // FOXEARN - FIXED ADS + 7 DECIMALS + REFERRAL FIXED REWARD
+        // FOXEARN - PASSIVE MINING (ALWAYS ACTIVE)
         // ============================================
         
         function num(val, fallback) {
@@ -262,13 +259,16 @@
         }
         
         const DEFAULT_SETTINGS = {
-            miningSpeed: 0.0001, tonPrice: 5.20, adReward: 0.0100000, minWithdraw: 0.5,
-            referralRewardAmount: 0.0300000,   // NEW: fixed reward per referral
+            miningSpeed: 0.00003,    // 1 H/s = 0.00003 TON per 24h (changed from 0.0001)
+            tonPrice: 5.20, 
+            adReward: 0.0100000, 
+            minWithdraw: 0.5,
+            referralRewardAmount: 0.0300000,
             depositAddress: 'UQD...YourWallet',
             plans: [
-                { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0050000 TON', icon:'🥉' },
-                { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0500000 TON', icon:'🥈' },
-                { id:'plan3', name:'🥇 Max', price:50, hashrate:5000, daily:'0.5000000 TON', icon:'🥇' }
+                { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0015000 TON', icon:'🥉' },
+                { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0150000 TON', icon:'🥈' },
+                { id:'plan3', name:'🥇 Max', price:50, hashrate:5000, daily:'0.1500000 TON', icon:'🥇' }
             ],
             tasks: [
                 { id:'t0', title:'📺 Watch Ad', desc:'Watch a short ad to earn TON', rewardTon:0.01, rewardHash:0, icon:'📺', link:'', isAdTask:true },
@@ -280,7 +280,84 @@
         };
         let SETTINGS = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
         
-        let isMining = false, miningInterval = null, timerInterval = null, miningSeconds = 0, lastDayReset = new Date().getDate();
+        // Passive mining variables
+        let lastMiningTimestamp = null;
+        let timerInterval = null;
+        let miningSeconds = 0;
+        let lastDayReset = new Date().getDate();
+        
+        // Function to calculate mining earnings since last saved timestamp
+        function calculatePassiveMining() {
+            if (!userData.id) return;
+            const now = Date.now();
+            let last = userData.lastMiningTimestamp;
+            if (!last) {
+                // First time, set to now
+                userData.lastMiningTimestamp = now;
+                saveUserData();
+                return;
+            }
+            const elapsedSeconds = Math.floor((now - last) / 1000);
+            if (elapsedSeconds <= 0) return;
+            
+            const hashrate = num(userData.hashrate, 10);
+            const miningSpeed = num(SETTINGS.miningSpeed, 0.00003);
+            // Daily earning per hash = miningSpeed, so per second = miningSpeed / 86400
+            const ratePerSecond = (hashrate * miningSpeed) / 86400;
+            const earned = ratePerSecond * elapsedSeconds;
+            
+            if (earned > 0) {
+                userData.tonBalance = num(userData.tonBalance, 0) + earned;
+                userData.totalEarned = num(userData.totalEarned, 0) + earned;
+                userData.todayEarned = num(userData.todayEarned, 0) + earned;
+                // Also increment miningSeconds for session display
+                miningSeconds += elapsedSeconds;
+            }
+            userData.lastMiningTimestamp = now;
+            saveUserData();
+            updateAllUI();
+        }
+        
+        // Call this periodically while page is open (every 1 sec) to update UI
+        let activeMiningInterval = null;
+        function startActiveMiningUI() {
+            if (activeMiningInterval) clearInterval(activeMiningInterval);
+            activeMiningInterval = setInterval(() => {
+                if (userData.id) {
+                    // Update UI to show current balance including passive earnings since last full save
+                    // But we don't want to save every second; just show approximate.
+                    // For simplicity, we recalc on interval but only if enough time passed.
+                    const now = Date.now();
+                    const last = userData.lastMiningTimestamp || now;
+                    const elapsedSeconds = Math.floor((now - last) / 1000);
+                    if (elapsedSeconds >= 1) {
+                        // Instead of saving every second, we can just simulate UI update without saving
+                        // But to keep consistent, we'll do a mini calculation for display only.
+                        const hashrate = num(userData.hashrate, 10);
+                        const miningSpeed = num(SETTINGS.miningSpeed, 0.00003);
+                        const ratePerSecond = (hashrate * miningSpeed) / 86400;
+                        const displayEarned = ratePerSecond * elapsedSeconds;
+                        const displayBalance = num(userData.tonBalance, 0) + displayEarned;
+                        document.getElementById('tonBalance').innerText = displayBalance.toFixed(7);
+                        document.getElementById('headerBalance').innerText = displayBalance.toFixed(7);
+                        document.getElementById('walletBalance').innerText = displayBalance.toFixed(7);
+                        // Update today earned display
+                        const todayDisplay = num(userData.todayEarned, 0) + displayEarned;
+                        document.getElementById('todayEarnedDisplay').innerText = todayDisplay.toFixed(7);
+                        // Update mining bar
+                        const dailyTarget = hashrate * miningSpeed;
+                        const progress = Math.min((todayDisplay / dailyTarget) * 100, 100);
+                        document.getElementById('miningBar').style.width = progress + '%';
+                    }
+                    // Update timer display
+                    const timerEl = document.getElementById('miningTimer');
+                    if (timerEl) {
+                        let totalSecs = miningSeconds + Math.floor((Date.now() - (userData.lastMiningTimestamp || Date.now())) / 1000);
+                        timerEl.innerText = String(Math.floor(totalSecs/3600)).padStart(2,'0')+':'+String(Math.floor((totalSecs%3600)/60)).padStart(2,'0')+':'+String(totalSecs%60).padStart(2,'0');
+                    }
+                }
+            }, 1000);
+        }
         
         // AUTH
         auth.signInAnonymously().catch(() => startAppLocal());
@@ -289,17 +366,14 @@
             else startAppLocal();
         });
         
-        // ---------- REFERRAL HANDLING ----------
         function handleReferral() {
             const urlParams = new URLSearchParams(window.location.search);
             const referrerId = urlParams.get('start');
             if (!referrerId || !currentUser) return;
             
-            // Check if this user already used a referral
             const usedKey = `ref_used_${currentUser.uid}`;
             if (localStorage.getItem(usedKey)) return;
             
-            // Award referrer
             db.collection('users').doc(referrerId).get().then(doc => {
                 if (doc.exists && referrerId !== currentUser.uid) {
                     const referrerData = doc.data();
@@ -330,6 +404,8 @@
                     userData.todayEarned = num(userData.todayEarned, 0);
                     userData.referrals = num(userData.referrals, 0);
                     userData.referralEarnings = num(userData.referralEarnings, 0);
+                    userData.lastMiningTimestamp = userData.lastMiningTimestamp || Date.now();
+                    miningSeconds = userData.miningSeconds || 0;
                     if (userData.blocked) {
                         document.querySelector('.app').innerHTML = '<div style="text-align:center;padding:50px;"><h1 style="color:#f44336;">🚫 Account Blocked</h1></div>';
                         return;
@@ -338,17 +414,24 @@
                     userData = {
                         id: uid, username: 'Miner', tonBalance: 0, hashrate: 10, totalEarned: 0, todayEarned: 0,
                         referrals: 0, referralEarnings: 0, completedTasks: [], purchasedPlans: [],
-                        miningSeconds: 0, transactions: [], blocked: false, createdAt: new Date().toISOString()
+                        miningSeconds: 0, transactions: [], blocked: false, createdAt: new Date().toISOString(),
+                        lastMiningTimestamp: Date.now()
                     };
                     saveUserToCloud();
-                    // After creating new user, check for referral
                     handleReferral();
                 }
+                // Calculate passive earnings from last timestamp to now
+                calculatePassiveMining();
                 initApp();
             }).catch(() => startAppLocal());
         }
         
-        function saveUserToCloud() { if (currentUser) db.collection('users').doc(currentUser.uid).set(userData, { merge: true }).catch(e => {}); }
+        function saveUserToCloud() { 
+            if (currentUser) {
+                userData.miningSeconds = miningSeconds;
+                db.collection('users').doc(currentUser.uid).set(userData, { merge: true }).catch(e => {});
+            }
+        }
         
         function loadSettingsFromCloud() {
             db.collection('settings').doc('global').get().then(doc => {
@@ -374,7 +457,8 @@
             userData = {
                 id: 'local_' + Date.now(), username: 'Miner', tonBalance: 0, hashrate: 10,
                 totalEarned: 0, todayEarned: 0, referrals: 0, referralEarnings: 0,
-                completedTasks: [], purchasedPlans: [], miningSeconds: 0, transactions: [], blocked: false
+                completedTasks: [], purchasedPlans: [], miningSeconds: 0, transactions: [], blocked: false,
+                lastMiningTimestamp: Date.now()
             };
             initApp();
         }
@@ -388,6 +472,15 @@
             renderTasks();
             renderPlans();
             renderHistory();
+            startActiveMiningUI();
+            // Save last timestamp every 30 seconds to prevent big gaps
+            setInterval(() => {
+                if (userData.id) {
+                    userData.lastMiningTimestamp = Date.now();
+                    saveUserData();
+                }
+            }, 30000);
+            // Daily reset check
             setInterval(() => {
                 const today = new Date().getDate();
                 if (today !== lastDayReset) { userData.todayEarned = 0; lastDayReset = today; saveUserData(); }
@@ -419,14 +512,14 @@
             const hashrate = num(userData.hashrate, 10);
             const today = num(userData.todayEarned, 0).toFixed(7);
             const total = num(userData.totalEarned, 0).toFixed(7);
-            const projected = (hashrate * num(SETTINGS.miningSpeed, 0.0001)).toFixed(7);
+            const dailyRate = (hashrate * num(SETTINGS.miningSpeed, 0.00003)).toFixed(7);
             
             setText('tonBalance', bal); setText('headerBalance', bal); setText('walletBalance', bal);
             setText('usdValue', (num(userData.tonBalance, 0) * tonPrice).toFixed(2));
             setText('walletUsd', (num(userData.tonBalance, 0) * tonPrice).toFixed(2));
             setText('hashrateDisplay', hashrate + ' H/s'); setText('homeHashrate', hashrate);
             setText('todayEarnedDisplay', today); setText('totalEarnedDisplay', total);
-            setText('projectedDaily', projected + ' TON');
+            setText('dailyRateDisplay', dailyRate + ' TON/day');
             
             const adRewardFixed = num(SETTINGS.adReward, 0.01).toFixed(7);
             setText('adReward', adRewardFixed);
@@ -435,10 +528,14 @@
             setText('taskAdReward3', adRewardFixed);
             setText('buttonAdReward', adRewardFixed);
             
-            // Referral display
             setText('refRewardAmount', num(SETTINGS.referralRewardAmount, 0.03).toFixed(7) + ' TON');
             setText('totalRefs', num(userData.referrals, 0));
             setText('refEarnings', num(userData.referralEarnings, 0).toFixed(7) + ' TON');
+            
+            // Update mining bar
+            const dailyTarget = hashrate * num(SETTINGS.miningSpeed, 0.00003);
+            const progress = Math.min((num(userData.todayEarned, 0) / dailyTarget) * 100, 100);
+            document.getElementById('miningBar').style.width = progress + '%';
             
             const refLink = document.getElementById('refLink');
             if (refLink) refLink.value = 'https://t.me/TonFoxEarnBot?start=' + (userData.id || 'unknown');
@@ -448,34 +545,7 @@
         
         function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = String(val); }
         
-        function toggleMining() { if (isMining) stopMining(); else startMining(); }
-        
-        function startMining() {
-            isMining = true;
-            document.getElementById('mineBtn').textContent = '⏹ STOP MINING';
-            document.getElementById('mineBtn').className = 'btn btn-stop';
-            const rate = (num(userData.hashrate, 10) * num(SETTINGS.miningSpeed, 0.0001)) / 86400;
-            miningInterval = setInterval(() => {
-                userData.tonBalance = num(userData.tonBalance, 0) + rate;
-                userData.totalEarned = num(userData.totalEarned, 0) + rate;
-                userData.todayEarned = num(userData.todayEarned, 0) + rate;
-                updateAllUI();
-                if (Math.random() < 0.05) saveUserData();
-            }, 1000);
-            timerInterval = setInterval(() => {
-                miningSeconds++;
-                const el = document.getElementById('miningTimer');
-                if (el) el.textContent = String(Math.floor(miningSeconds/3600)).padStart(2,'0')+':'+String(Math.floor((miningSeconds%3600)/60)).padStart(2,'0')+':'+String(miningSeconds%60).padStart(2,'0');
-            }, 1000);
-        }
-        
-        function stopMining() {
-            isMining = false; clearInterval(miningInterval); clearInterval(timerInterval);
-            document.getElementById('mineBtn').textContent = '▶ START MINING';
-            document.getElementById('mineBtn').className = 'btn btn-start'; saveUserData();
-        }
-        
-        // ---------- REWARDED ADS (all use same admin reward) ----------
+        // ---------- REWARDED ADS ----------
         function grantAdReward() {
             const reward = num(SETTINGS.adReward, 0.01);
             userData.tonBalance = num(userData.tonBalance, 0) + reward;
@@ -501,7 +571,6 @@
             });
         }
         
-        // For multiple task banners
         function watchTaskAd(bannerId) {
             if (!adsgramInstance) { showToast('📺 Ad network loading, try again...'); initAdsGram(); return; }
             showToast('📺 Loading banner ad...');
@@ -517,7 +586,6 @@
             });
         }
         
-        // Button ad
         function watchButtonAd() {
             if (!adsgramInstance) { showToast('📺 Ad network loading, try again...'); initAdsGram(); return; }
             showToast('🔘 Loading button ad...');
@@ -533,7 +601,7 @@
             });
         }
         
-        // ---------- TASKS (unchanged except reward display) ----------
+        // ---------- TASKS ----------
         function renderTasks() {
             const container = document.getElementById('tasksList');
             if (!container) return;
@@ -572,7 +640,7 @@
             saveUserData(); updateAllUI(); renderTasks(); showToast('✅ Reward granted!');
         }
         
-        // PLANS, WALLET, etc. unchanged
+        // PLANS
         function renderPlans() {
             const container = document.getElementById('plansList');
             if (!container) return;
@@ -598,6 +666,7 @@
             }
         }
         
+        // WALLET
         function submitWithdraw() {
             const addr = document.getElementById('withdrawAddress').value.trim();
             const amt = parseFloat(document.getElementById('withdrawAmount').value);
@@ -608,7 +677,6 @@
                 userData.tonBalance = num(userData.tonBalance, 0) - amt;
                 if (!userData.transactions) userData.transactions = [];
                 userData.transactions.push({ type:'withdraw', amount:amt, address:addr, date:new Date().toLocaleString(), status:'pending' });
-                if (isMining) stopMining();
                 saveUserData(); updateAllUI(); renderHistory();
                 document.getElementById('withdrawAddress').value = '';
                 document.getElementById('withdrawAmount').value = '';
