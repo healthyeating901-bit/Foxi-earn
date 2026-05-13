@@ -1,31 +1,50 @@
-<!DOCTYPE html>
+here<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>FoxEarn - Earn TON</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #0a0a1a; color: white; padding: 16px; }
-        .container { max-width: 500px; margin: 0 auto; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a1a; color: white; padding-bottom: 70px; }
+        .container { max-width: 500px; margin: 0 auto; padding: 16px; }
+        .header { background: linear-gradient(135deg, #0088cc, #005577); border-radius: 20px; padding: 20px; margin-bottom: 20px; text-align: center; }
+        .balance { font-size: 24px; font-weight: bold; }
+        .balance small { font-size: 12px; opacity: 0.8; }
+        .mining-info { background: #1a1a2e; border-radius: 15px; padding: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .mining-speed { font-size: 20px; font-weight: bold; color: #f7931a; }
         .card { background: #1a1a2e; border-radius: 20px; padding: 16px; margin-bottom: 12px; border: 1px solid #2a2a4a; }
-        .task-title { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        .task-desc { font-size: 13px; color: #aaa; margin-bottom: 10px; }
+        .task-title, .plan-title { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .task-desc, .plan-desc { font-size: 13px; color: #aaa; margin-bottom: 10px; }
         .rewards { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
         .reward-badge { background: #0d0d20; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
         .ton-badge { color: #4caf50; }
         .hash-badge { color: #f7931a; }
-        .task-link { display: block; background: #0088cc; color: white; text-decoration: none; padding: 10px; border-radius: 30px; font-size: 14px; font-weight: bold; text-align: center; cursor: pointer; border: none; width: 100%; }
-        .task-link.completed { background: #2a2a4a; opacity: 0.6; cursor: not-allowed; }
-        .toast { position: fixed; bottom: 20px; left: 20px; right: 20px; background: #1e1e2e; border-left: 4px solid #0088cc; padding: 12px; border-radius: 12px; text-align: center; z-index: 1000; display: none; }
+        .btn-action { display: block; background: #0088cc; color: white; text-decoration: none; padding: 10px; border-radius: 30px; font-size: 14px; font-weight: bold; text-align: center; cursor: pointer; border: none; width: 100%; }
+        .btn-action.completed { background: #2a2a4a; opacity: 0.6; cursor: not-allowed; }
+        .btn-outline { background: transparent; border: 1px solid #0088cc; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a2e; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #2a2a4a; z-index: 100; }
+        .nav-item { text-align: center; color: #888; cursor: pointer; font-size: 12px; }
+        .nav-item.active { color: #0088cc; }
+        .nav-item i { font-size: 24px; display: block; margin-bottom: 4px; }
+        .toast { position: fixed; bottom: 80px; left: 20px; right: 20px; background: #1e1e2e; border-left: 4px solid #0088cc; padding: 12px; border-radius: 12px; text-align: center; z-index: 1000; display: none; }
         .loading { text-align: center; margin-top: 50px; }
-        .balance-bar { background: #0d0d20; border-radius: 30px; padding: 10px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; font-size: 14px; }
+        .referral-link { background: #0d0d20; padding: 10px; border-radius: 10px; word-break: break-all; font-size: 12px; margin: 10px 0; }
+        .withdraw-form { margin-top: 15px; }
+        input, select { width: 100%; padding: 10px; background: #0d0d20; border: 1px solid #333; border-radius: 8px; color: white; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-<div class="container">
-    <div id="balanceBar" class="balance-bar">Loading...</div>
-    <div id="tasksList">Loading tasks...</div>
+<div class="container" id="app">
+    <!-- Dynamic content loaded by JavaScript -->
+</div>
+<div class="bottom-nav">
+    <div class="nav-item" data-tab="home"><i class="fas fa-home"></i><span>Home</span></div>
+    <div class="nav-item" data-tab="tasks"><i class="fas fa-tasks"></i><span>Tasks</span></div>
+    <div class="nav-item" data-tab="plans"><i class="fas fa-rocket"></i><span>Plans</span></div>
+    <div class="nav-item" data-tab="refer"><i class="fas fa-users"></i><span>Refer</span></div>
+    <div class="nav-item" data-tab="wallet"><i class="fas fa-wallet"></i><span>Wallet</span></div>
 </div>
 <div id="toast" class="toast"></div>
 
@@ -50,6 +69,7 @@
     let userId = tg.initDataUnsafe?.user?.id || 'demo_' + Date.now();
     let settings = null;
     let userData = null;
+    let currentTab = 'home';
 
     function showToast(msg, isError = false) {
         const toast = document.getElementById('toast');
@@ -64,45 +84,51 @@
         if (doc.exists) {
             userData = doc.data();
         } else {
-            userData = { tonBalance: 0, hashrate: 0, completedTasks: [], lastAdTime: 0, transactions: [] };
+            userData = {
+                tonBalance: 0, hashrate: 0, completedTasks: [], lastAdTime: 0,
+                activePlan: null, planExpiry: null, referralCode: userId.toString(),
+                referredBy: null, referralEarnings: 0, transactions: []
+            };
             await db.collection('users').doc(userId.toString()).set(userData);
         }
+        // Ensure fields exist
+        if (!userData.completedTasks) userData.completedTasks = [];
+        if (!userData.transactions) userData.transactions = [];
+        if (!userData.referralCode) userData.referralCode = userId.toString();
+        if (!userData.referralEarnings) userData.referralEarnings = 0;
     }
 
     async function loadSettings() {
         const doc = await db.collection('settings').doc('global').get();
         if (doc.exists) settings = doc.data();
-        else settings = { tasks: [], adCooldown: 60, adsgramBlockId: '' };
+        else settings = { tasks: [], plans: [], adCooldown: 60, adsgramBlockId: '', miningSpeed: 0.0001, minWithdraw: 0.5, depositAddress: '', referralPercent: 10 };
     }
 
     async function saveUser() {
         await db.collection('users').doc(userId.toString()).update(userData);
     }
 
-    async function grantReward(task) {
-        let updated = false;
-        if (task.rewardTon > 0) {
-            userData.tonBalance += task.rewardTon;
-            userData.transactions.push({ type: 'task', amount: task.rewardTon, taskTitle: task.title, date: new Date().toISOString(), status: 'completed' });
-            updated = true;
-        }
-        if (task.rewardHash > 0) {
-            userData.hashrate += task.rewardHash;
-            updated = true;
-        }
-        if (updated) {
-            await saveUser();
-            showToast(`✅ Earned ${task.rewardTon>0?task.rewardTon+' TON ':''}${task.rewardHash>0?task.rewardHash+' H/s':''}!`);
-            renderUI();
+    // Mining logic: update balance based on hashrate (called every minute)
+    let lastMiningUpdate = Date.now();
+    async function updateMining() {
+        if (!userData || !settings) return;
+        const now = Date.now();
+        const secondsPassed = (now - lastMiningUpdate) / 1000;
+        if (secondsPassed >= 60 && userData.hashrate > 0) {
+            const earned = (userData.hashrate * settings.miningSpeed) * (secondsPassed / 86400);
+            if (earned > 0) {
+                userData.tonBalance += earned;
+                userData.transactions.push({ type: 'mining', amount: earned, date: new Date().toISOString() });
+                await saveUser();
+                showToast(`⛏️ Mined ${earned.toFixed(6)} TON`);
+                renderUI();
+            }
+            lastMiningUpdate = now;
         }
     }
+    setInterval(updateMining, 60000);
 
-    async function completeTask(taskId) {
-        if (userData.completedTasks.includes(taskId)) return;
-        userData.completedTasks.push(taskId);
-        await saveUser();
-    }
-
+    // Adsgram ad handler
     async function showAdsgramAd(blockId) {
         return new Promise((resolve, reject) => {
             if (!window.Adsgram) {
@@ -120,7 +146,6 @@
             showToast("Ad not configured", true);
             return false;
         }
-        // cooldown check
         const now = Date.now() / 1000;
         if (userData.lastAdTime && (now - userData.lastAdTime) < (settings.adCooldown || 60)) {
             const wait = Math.ceil((settings.adCooldown || 60) - (now - userData.lastAdTime));
@@ -139,64 +164,188 @@
         }
     }
 
-    async function onTaskClick(task) {
-        if (userData.completedTasks.includes(task.id)) {
-            showToast("Task already done");
-            return;
-        }
+    async function completeTask(task) {
+        if (userData.completedTasks.includes(task.id)) return false;
         if (task.isAdTask) {
             const success = await handleAdTask(task);
-            if (!success) return;
+            if (!success) return false;
         } else if (task.link) {
             window.open(task.link, '_blank');
-            if (!confirm("After completing the action, click OK to claim reward.")) return;
+            if (!confirm("After completing the action, click OK to claim reward.")) return false;
         }
-        await grantReward(task);
-        await completeTask(task.id);
+        // Grant rewards
+        let updated = false;
+        if (task.rewardTon > 0) {
+            userData.tonBalance += task.rewardTon;
+            userData.transactions.push({ type: 'task', amount: task.rewardTon, taskTitle: task.title, date: new Date().toISOString() });
+            updated = true;
+        }
+        if (task.rewardHash > 0) {
+            userData.hashrate += task.rewardHash;
+            updated = true;
+        }
+        if (updated) {
+            userData.completedTasks.push(task.id);
+            await saveUser();
+            showToast(`✅ Earned ${task.rewardTon>0?task.rewardTon+' TON ':''}${task.rewardHash>0?task.rewardHash+' H/s':''}`);
+            renderUI();
+            return true;
+        }
+        return false;
     }
 
-    async function renderUI() {
-        if (!settings || !userData) return;
-        const tasks = settings.tasks || [];
-        const container = document.getElementById('tasksList');
-        const balanceDiv = document.getElementById('balanceBar');
-        balanceDiv.innerHTML = `💰 ${userData.tonBalance.toFixed(4)} TON &nbsp;|&nbsp; ⚡ ${userData.hashrate} H/s`;
-
-        if (tasks.length === 0) {
-            container.innerHTML = '<div class="card">No tasks yet</div>';
+    // Purchase plan
+    async function purchasePlan(plan) {
+        if (userData.tonBalance < plan.price) {
+            showToast(`Insufficient TON. Need ${plan.price} TON`, true);
             return;
         }
-
-        let html = '';
-        for (const task of tasks) {
-            const isCompleted = userData.completedTasks.includes(task.id);
-            let rewardsHtml = '';
-            if (task.rewardTon > 0) rewardsHtml += `<span class="reward-badge ton-badge">💰 +${task.rewardTon} TON</span>`;
-            if (task.rewardHash > 0) rewardsHtml += `<span class="reward-badge hash-badge">⚡ +${task.rewardHash} H/s</span>`;
-            if (task.isAdTask) rewardsHtml += `<span class="reward-badge">📺 Adsgram</span>`;
-
-            html += `
-                <div class="card">
-                    <div class="task-title"><span>${task.icon || '📋'}</span> ${task.title}</div>
-                    <div class="task-desc">${task.desc || ''}</div>
-                    <div class="rewards">${rewardsHtml}</div>
-                    <button class="task-link ${isCompleted ? 'completed' : ''}" onclick='onTaskClickProxy(${JSON.stringify(task)})' ${isCompleted ? 'disabled' : ''}>
-                        ${isCompleted ? '✅ Completed' : (task.isAdTask ? '📺 Watch Ad' : '🚀 Start')}
-                    </button>
-                </div>
-            `;
-        }
-        container.innerHTML = html;
+        userData.tonBalance -= plan.price;
+        userData.hashrate += plan.hashrate;
+        userData.activePlan = plan.id;
+        userData.planExpiry = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+        userData.transactions.push({ type: 'plan_purchase', amount: plan.price, planName: plan.name, date: new Date().toISOString() });
+        await saveUser();
+        showToast(`🎉 Purchased ${plan.name}! +${plan.hashrate} H/s`);
+        renderUI();
     }
 
-    window.onTaskClickProxy = onTaskClick;
+    // Withdraw request
+    async function requestWithdraw() {
+        const address = document.getElementById('withdrawAddress')?.value;
+        const amount = parseFloat(document.getElementById('withdrawAmount')?.value);
+        if (!address || !amount) { showToast("Enter address and amount", true); return; }
+        if (amount < (settings.minWithdraw || 0.5)) { showToast(`Minimum withdraw: ${settings.minWithdraw} TON`, true); return; }
+        if (amount > userData.tonBalance) { showToast("Insufficient balance", true); return; }
+        userData.tonBalance -= amount;
+        userData.transactions.push({ type: 'withdraw', amount: amount, address: address, status: 'pending', date: new Date().toISOString() });
+        await saveUser();
+        showToast("Withdrawal request sent. Pending approval.");
+        renderUI();
+    }
+
+    // Referral link
+    function getReferralLink() {
+        return `https://t.me/YourBot?start=${userData.referralCode}`;
+    }
+
+    // Render based on current tab
+    async function renderUI() {
+        if (!settings || !userData) return;
+        const app = document.getElementById('app');
+        const miningPerDay = (userData.hashrate * (settings.miningSpeed || 0.0001)).toFixed(6);
+        const dailyTon = miningPerDay;
+        switch (currentTab) {
+            case 'home':
+                app.innerHTML = `
+                    <div class="header">
+                        <div class="balance">💰 ${userData.tonBalance.toFixed(4)} TON</div>
+                        <div class="balance"><small>⚡ ${userData.hashrate} H/s</small></div>
+                    </div>
+                    <div class="mining-info">
+                        <span>⛏️ Mining speed</span>
+                        <span class="mining-speed">+${dailyTon} TON/day</span>
+                    </div>
+                    <div class="card">
+                        <div class="task-title">📊 Your Stats</div>
+                        <p>Referrals: ${userData.referralEarnings.toFixed(2)} TON earned</p>
+                        <p>Active plan: ${userData.activePlan ? 'Yes' : 'None'}</p>
+                    </div>
+                `;
+                break;
+            case 'tasks':
+                let tasksHtml = '<div class="header"><h2>📝 Earn Rewards</h2></div>';
+                for (const task of settings.tasks || []) {
+                    const isCompleted = userData.completedTasks.includes(task.id);
+                    let rewardsHtml = '';
+                    if (task.rewardTon > 0) rewardsHtml += `<span class="reward-badge ton-badge">💰 +${task.rewardTon} TON</span>`;
+                    if (task.rewardHash > 0) rewardsHtml += `<span class="reward-badge hash-badge">⚡ +${task.rewardHash} H/s</span>`;
+                    tasksHtml += `
+                        <div class="card">
+                            <div class="task-title">${task.icon || '📋'} ${task.title}</div>
+                            <div class="task-desc">${task.desc || ''}</div>
+                            <div class="rewards">${rewardsHtml}</div>
+                            <button class="btn-action ${isCompleted ? 'completed' : ''}" onclick='completeTaskProxy(${JSON.stringify(task)})' ${isCompleted ? 'disabled' : ''}>
+                                ${isCompleted ? '✅ Completed' : (task.isAdTask ? '📺 Watch Ad' : '🚀 Start')}
+                            </button>
+                        </div>
+                    `;
+                }
+                app.innerHTML = tasksHtml;
+                break;
+            case 'plans':
+                let plansHtml = '<div class="header"><h2>📋 Mining Plans</h2></div>';
+                for (const plan of settings.plans || []) {
+                    plansHtml += `
+                        <div class="card">
+                            <div class="plan-title">${plan.icon} ${plan.name}</div>
+                            <div class="plan-desc">⚡ ${plan.hashrate} H/s | 💰 ${plan.price} TON</div>
+                            <button class="btn-action" onclick="purchasePlanProxy(${JSON.stringify(plan)})">Buy Plan</button>
+                        </div>
+                    `;
+                }
+                app.innerHTML = plansHtml;
+                break;
+            case 'refer':
+                app.innerHTML = `
+                    <div class="header"><h2>👥 Referral Program</h2></div>
+                    <div class="card">
+                        <p>Earn ${settings.referralPercent || 10}% from your referrals' task earnings!</p>
+                        <div class="referral-link">${getReferralLink()}</div>
+                        <button class="btn-action" onclick="copyReferralLink()">📋 Copy Link</button>
+                        <p style="margin-top:15px;">Total earned from referrals: ${userData.referralEarnings.toFixed(4)} TON</p>
+                    </div>
+                `;
+                break;
+            case 'wallet':
+                app.innerHTML = `
+                    <div class="header"><h2>💸 Wallet</h2></div>
+                    <div class="card">
+                        <p>Balance: ${userData.tonBalance.toFixed(4)} TON</p>
+                        <p>Min withdraw: ${settings.minWithdraw || 0.5} TON</p>
+                        <div class="withdraw-form">
+                            <input type="text" id="withdrawAddress" placeholder="TON Wallet Address">
+                            <input type="number" id="withdrawAmount" placeholder="Amount (TON)" step="0.1">
+                            <button class="btn-action" onclick="requestWithdraw()">Request Withdraw</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>Transaction History</h3>
+                        ${(userData.transactions || []).slice().reverse().slice(0,10).map(tx => `<p>${tx.date.slice(0,16)} - ${tx.type}: ${tx.amount?.toFixed(4) || 0} TON</p>`).join('')}
+                    </div>
+                `;
+                break;
+        }
+    }
+
+    // Proxies for onclick handlers
+    window.completeTaskProxy = completeTask;
+    window.purchasePlanProxy = purchasePlan;
+    window.requestWithdraw = requestWithdraw;
+    window.copyReferralLink = () => { navigator.clipboard.writeText(getReferralLink()); showToast("Link copied!"); };
+
+    // Tab switching
+    function setTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add('active');
+        renderUI();
+    }
 
     async function init() {
         await loadSettings();
         await loadUser();
-        await renderUI();
+        lastMiningUpdate = Date.now();
+        setTab('home');
+        // Update mining every minute
+        setInterval(async () => { await updateMining(); }, 60000);
     }
     init();
+
+    // Attach tab listeners
+    document.querySelectorAll('.nav-item').forEach(el => {
+        el.addEventListener('click', () => setTab(el.dataset.tab));
+    });
 </script>
 </body>
 </html>
