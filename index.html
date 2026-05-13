@@ -37,7 +37,6 @@
         .btn { padding: 15px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; transition: all 0.2s; color: white; }
         .btn:active { transform: scale(0.97); }
         .btn-start { background: #4caf50; font-size: 18px; }
-        /* .btn-stop removed - no stop button needed */
         .btn-ton { background: #0088cc; }
         
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a2e; display: flex; justify-content: space-around; padding: 10px; border-top: 1px solid #333; z-index: 100; max-width: 430px; margin: 0 auto; }
@@ -67,16 +66,20 @@
         .plan-card .plan-stats span { color: #4fc3f7; font-weight: bold; }
         .plan-card .buy-btn { background: #0088cc; color: white; border: none; padding: 12px; border-radius: 20px; width: 100%; cursor: pointer; font-weight: bold; font-size: 14px; }
         
-        .ad-card { background: linear-gradient(135deg, #f093fb, #f5576c); padding: 15px; border-radius: 15px; text-align: center; cursor: pointer; margin-bottom: 15px; font-weight: bold; font-size: 16px; }
+        .ad-card, .tasks-ad-banner, .tasks-ad-button {
+            cursor: pointer;
+            transition: none; /* remove blinking effect */
+        }
+        .ad-card:active, .tasks-ad-banner:active, .tasks-ad-button:active {
+            transform: scale(0.98);
+        }
         
-        .tasks-ad-banner { background: #1a1a2e; border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px; border: 2px dashed #f5576c; cursor: pointer; transition: all 0.2s; }
-        .tasks-ad-banner:active { transform: scale(0.97); }
+        .ad-card { background: linear-gradient(135deg, #f093fb, #f5576c); padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 16px; }
+        .tasks-ad-banner { background: #1a1a2e; border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px; border: 2px dashed #f5576c; }
         .tasks-ad-banner .ad-icon { font-size: 28px; margin-bottom: 5px; }
         .tasks-ad-banner .ad-text { color: #f5576c; font-weight: bold; }
         .tasks-ad-banner .ad-reward { color: #4caf50; font-size: 12px; margin-top: 3px; }
-        
-        .tasks-ad-button { background: linear-gradient(135deg, #0088cc, #0055aa); border-radius: 30px; padding: 14px; text-align: center; margin-bottom: 15px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
-        .tasks-ad-button:active { transform: scale(0.97); }
+        .tasks-ad-button { background: linear-gradient(135deg, #0088cc, #0055aa); border-radius: 30px; padding: 14px; text-align: center; margin-bottom: 15px; font-weight: bold; }
         .tasks-ad-button .ad-text { font-size: 16px; }
         .tasks-ad-button .ad-reward { font-size: 13px; opacity: 0.9; margin-top: 3px; }
         
@@ -86,9 +89,16 @@
         
         .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 25px; z-index: 1000; font-size: 14px; font-weight: bold; }
         
+        /* Modal for double reward join */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: #1a1a2e; border-radius: 20px; padding: 25px; max-width: 300px; text-align: center; border: 1px solid #0088cc; }
+        .modal-content h3 { color: #f5576c; margin-bottom: 10px; }
+        .modal-content p { margin: 15px 0; font-size: 14px; }
+        .modal-content button { background: #0088cc; border: none; padding: 12px 20px; border-radius: 25px; color: white; font-weight: bold; margin: 5px; cursor: pointer; }
+        .modal-content .join-btn { background: #4caf50; }
+        
         input, select { width: 100%; padding: 12px; background: #0d0d20; border: 1px solid #333; border-radius: 10px; color: white; margin-bottom: 10px; font-size: 14px; }
         
-        /* Mining status indicator */
         .mining-status { display: inline-block; width: 10px; height: 10px; background-color: #4caf50; border-radius: 50%; margin-right: 5px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
     </style>
@@ -110,8 +120,9 @@
                 <div class="usd">≈ $<span id="usdValue">0.00</span> USD | ⚡ <span id="homeHashrate">10</span> H/s</div>
             </div>
             
-            <div class="ad-card" onclick="watchAd()">
-                📺 Watch Ad & Earn +<span id="adReward">0.0100000</span> TON
+            <div class="ad-card" onclick="handleAdClick('home')">
+                📺 Watch Ad & Earn +<span id="adRewardDisplay">0.0100000</span> TON
+                <div style="font-size:11px; margin-top:4px;">✨ Join Telegram for 2x reward!</div>
             </div>
             
             <div class="card mining-card">
@@ -126,7 +137,6 @@
                     <span>📅 Daily Rate: <b id="dailyRateDisplay" style="color:#f7931a;">0.0000 TON/day</b></span>
                     <span>💰 Total Earned: <b id="totalEarnedDisplay" style="color:#4fc3f7;">0.0000000</b></span>
                 </div>
-                <!-- No start/stop button - mining is always active -->
             </div>
         </div>
 
@@ -134,24 +144,24 @@
         <div class="page" id="tasksPage">
             <h3 style="margin-bottom:15px;">📋 Earn Rewards</h3>
             
-            <div class="tasks-ad-banner" onclick="watchTaskAd('banner1')">
+            <div class="tasks-ad-banner" onclick="handleAdClick('taskBanner1')">
                 <div class="ad-icon">📺</div>
                 <div class="ad-text">Watch Banner Ad #1 & Earn</div>
                 <div class="ad-reward">+<span id="taskAdReward1">0.0100000</span> TON</div>
             </div>
 
-            <div class="tasks-ad-banner" onclick="watchTaskAd('banner2')">
+            <div class="tasks-ad-banner" onclick="handleAdClick('taskBanner2')">
                 <div class="ad-icon">🎬</div>
                 <div class="ad-text">Watch Banner Ad #2 & Earn</div>
                 <div class="ad-reward">+<span id="taskAdReward2">0.0100000</span> TON</div>
             </div>
 
-            <div class="tasks-ad-button" onclick="watchButtonAd()">
+            <div class="tasks-ad-button" onclick="handleAdClick('buttonAd')">
                 <div class="ad-text">🔘 Click Button Ad & Earn</div>
                 <div class="ad-reward">+<span id="buttonAdReward">0.0100000</span> TON</div>
             </div>
 
-            <div class="tasks-ad-banner" onclick="watchTaskAd('banner3')">
+            <div class="tasks-ad-banner" onclick="handleAdClick('taskBanner3')">
                 <div class="ad-icon">📺</div>
                 <div class="ad-text">Watch Banner Ad #3 & Earn</div>
                 <div class="ad-reward">+<span id="taskAdReward3">0.0100000</span> TON</div>
@@ -213,6 +223,16 @@
         </nav>
     </div>
 
+    <!-- Modal for join Telegram to double reward -->
+    <div id="doubleRewardModal" class="modal">
+        <div class="modal-content">
+            <h3>🎁 DOUBLE REWARD!</h3>
+            <p>Join our Telegram channel to get <b style="color:#4caf50;">2x TON rewards</b> for every ad you watch!</p>
+            <button class="join-btn" onclick="openTelegramAndConfirm()">📢 Join Telegram</button>
+            <button onclick="closeModal()">❌ No thanks</button>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
@@ -223,7 +243,7 @@
 
     <script>
         // ============================================
-        // FOXEARN - PASSIVE MINING (ALWAYS ACTIVE)
+        // FOXEARN - FIXED BLINKING + DOUBLE REWARD ON JOIN
         // ============================================
         
         function num(val, fallback) {
@@ -259,12 +279,13 @@
         }
         
         const DEFAULT_SETTINGS = {
-            miningSpeed: 0.00003,    // 1 H/s = 0.00003 TON per 24h (changed from 0.0001)
+            miningSpeed: 0.00003,    // 1 H/s = 0.00003 TON per 24h
             tonPrice: 5.20, 
             adReward: 0.0100000, 
             minWithdraw: 0.5,
             referralRewardAmount: 0.0300000,
             depositAddress: 'UQD...YourWallet',
+            telegramChannelUrl: 'https://t.me/foxearn',  // Change to your channel
             plans: [
                 { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0015000 TON', icon:'🥉' },
                 { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0150000 TON', icon:'🥈' },
@@ -286,13 +307,48 @@
         let miningSeconds = 0;
         let lastDayReset = new Date().getDate();
         
-        // Function to calculate mining earnings since last saved timestamp
+        // Double reward modal handling
+        let pendingAdCallback = null; // stores function to call after joining
+        
+        function showDoubleRewardModal(callback) {
+            pendingAdCallback = callback;
+            document.getElementById('doubleRewardModal').style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('doubleRewardModal').style.display = 'none';
+            pendingAdCallback = null;
+        }
+        
+        function openTelegramAndConfirm() {
+            // Open Telegram channel in new tab
+            window.open(SETTINGS.telegramChannelUrl || 'https://t.me/foxearn', '_blank');
+            // After user comes back, they click "I Joined" button? We'll auto-detect? 
+            // Simpler: show a confirm after 3 seconds.
+            setTimeout(() => {
+                if (confirm('✅ Have you joined the Telegram channel?\nClick OK to get DOUBLE rewards for this and future ads.')) {
+                    // Mark user as joined
+                    userData.joinedForDouble = true;
+                    saveUserData();
+                    closeModal();
+                    if (pendingAdCallback) {
+                        pendingAdCallback(true); // true = double reward
+                        pendingAdCallback = null;
+                    }
+                    showToast('🎉 Awesome! Your ad rewards are now DOUBLED permanently!');
+                    updateAllUI(); // update display of reward amounts
+                } else {
+                    showToast('⚠️ Please join the channel to claim double rewards.');
+                }
+            }, 3000);
+        }
+        
+        // Calculate mining earnings since last timestamp
         function calculatePassiveMining() {
             if (!userData.id) return;
             const now = Date.now();
             let last = userData.lastMiningTimestamp;
             if (!last) {
-                // First time, set to now
                 userData.lastMiningTimestamp = now;
                 saveUserData();
                 return;
@@ -302,7 +358,6 @@
             
             const hashrate = num(userData.hashrate, 10);
             const miningSpeed = num(SETTINGS.miningSpeed, 0.00003);
-            // Daily earning per hash = miningSpeed, so per second = miningSpeed / 86400
             const ratePerSecond = (hashrate * miningSpeed) / 86400;
             const earned = ratePerSecond * elapsedSeconds;
             
@@ -310,7 +365,6 @@
                 userData.tonBalance = num(userData.tonBalance, 0) + earned;
                 userData.totalEarned = num(userData.totalEarned, 0) + earned;
                 userData.todayEarned = num(userData.todayEarned, 0) + earned;
-                // Also increment miningSeconds for session display
                 miningSeconds += elapsedSeconds;
             }
             userData.lastMiningTimestamp = now;
@@ -318,21 +372,15 @@
             updateAllUI();
         }
         
-        // Call this periodically while page is open (every 1 sec) to update UI
         let activeMiningInterval = null;
         function startActiveMiningUI() {
             if (activeMiningInterval) clearInterval(activeMiningInterval);
             activeMiningInterval = setInterval(() => {
                 if (userData.id) {
-                    // Update UI to show current balance including passive earnings since last full save
-                    // But we don't want to save every second; just show approximate.
-                    // For simplicity, we recalc on interval but only if enough time passed.
                     const now = Date.now();
                     const last = userData.lastMiningTimestamp || now;
                     const elapsedSeconds = Math.floor((now - last) / 1000);
                     if (elapsedSeconds >= 1) {
-                        // Instead of saving every second, we can just simulate UI update without saving
-                        // But to keep consistent, we'll do a mini calculation for display only.
                         const hashrate = num(userData.hashrate, 10);
                         const miningSpeed = num(SETTINGS.miningSpeed, 0.00003);
                         const ratePerSecond = (hashrate * miningSpeed) / 86400;
@@ -341,15 +389,12 @@
                         document.getElementById('tonBalance').innerText = displayBalance.toFixed(7);
                         document.getElementById('headerBalance').innerText = displayBalance.toFixed(7);
                         document.getElementById('walletBalance').innerText = displayBalance.toFixed(7);
-                        // Update today earned display
                         const todayDisplay = num(userData.todayEarned, 0) + displayEarned;
                         document.getElementById('todayEarnedDisplay').innerText = todayDisplay.toFixed(7);
-                        // Update mining bar
                         const dailyTarget = hashrate * miningSpeed;
                         const progress = Math.min((todayDisplay / dailyTarget) * 100, 100);
                         document.getElementById('miningBar').style.width = progress + '%';
                     }
-                    // Update timer display
                     const timerEl = document.getElementById('miningTimer');
                     if (timerEl) {
                         let totalSecs = miningSeconds + Math.floor((Date.now() - (userData.lastMiningTimestamp || Date.now())) / 1000);
@@ -370,18 +415,14 @@
             const urlParams = new URLSearchParams(window.location.search);
             const referrerId = urlParams.get('start');
             if (!referrerId || !currentUser) return;
-            
             const usedKey = `ref_used_${currentUser.uid}`;
             if (localStorage.getItem(usedKey)) return;
-            
             db.collection('users').doc(referrerId).get().then(doc => {
                 if (doc.exists && referrerId !== currentUser.uid) {
-                    const referrerData = doc.data();
                     const reward = num(SETTINGS.referralRewardAmount, 0.0300000);
-                    const newBalance = num(referrerData.tonBalance, 0) + reward;
-                    const newRefEarnings = num(referrerData.referralEarnings, 0) + reward;
-                    const newRefCount = num(referrerData.referrals, 0) + 1;
-                    
+                    const newBalance = num(doc.data().tonBalance, 0) + reward;
+                    const newRefEarnings = num(doc.data().referralEarnings, 0) + reward;
+                    const newRefCount = num(doc.data().referrals, 0) + 1;
                     db.collection('users').doc(referrerId).update({
                         tonBalance: newBalance,
                         referralEarnings: newRefEarnings,
@@ -389,9 +430,9 @@
                     }).then(() => {
                         localStorage.setItem(usedKey, 'true');
                         showToast(`🎉 Referrer earned ${reward.toFixed(7)} TON!`);
-                    }).catch(e => console.warn("Referral update error", e));
+                    }).catch(e => console.warn(e));
                 }
-            }).catch(e => console.warn("Referral fetch error", e));
+            }).catch(e => console.warn(e));
         }
         
         function loadUserFromCloud(uid) {
@@ -404,6 +445,7 @@
                     userData.todayEarned = num(userData.todayEarned, 0);
                     userData.referrals = num(userData.referrals, 0);
                     userData.referralEarnings = num(userData.referralEarnings, 0);
+                    userData.joinedForDouble = userData.joinedForDouble || false;
                     userData.lastMiningTimestamp = userData.lastMiningTimestamp || Date.now();
                     miningSeconds = userData.miningSeconds || 0;
                     if (userData.blocked) {
@@ -415,12 +457,12 @@
                         id: uid, username: 'Miner', tonBalance: 0, hashrate: 10, totalEarned: 0, todayEarned: 0,
                         referrals: 0, referralEarnings: 0, completedTasks: [], purchasedPlans: [],
                         miningSeconds: 0, transactions: [], blocked: false, createdAt: new Date().toISOString(),
-                        lastMiningTimestamp: Date.now()
+                        lastMiningTimestamp: Date.now(),
+                        joinedForDouble: false
                     };
                     saveUserToCloud();
                     handleReferral();
                 }
-                // Calculate passive earnings from last timestamp to now
                 calculatePassiveMining();
                 initApp();
             }).catch(() => startAppLocal());
@@ -443,6 +485,7 @@
                     SETTINGS.minWithdraw = num(cloud.minWithdraw, DEFAULT_SETTINGS.minWithdraw);
                     SETTINGS.referralRewardAmount = num(cloud.referralRewardAmount, DEFAULT_SETTINGS.referralRewardAmount);
                     SETTINGS.depositAddress = cloud.depositAddress || DEFAULT_SETTINGS.depositAddress;
+                    SETTINGS.telegramChannelUrl = cloud.telegramChannelUrl || DEFAULT_SETTINGS.telegramChannelUrl;
                     if (cloud.plans && cloud.plans.length) SETTINGS.plans = cloud.plans;
                     if (cloud.tasks && cloud.tasks.length) SETTINGS.tasks = cloud.tasks;
                 } else {
@@ -458,7 +501,8 @@
                 id: 'local_' + Date.now(), username: 'Miner', tonBalance: 0, hashrate: 10,
                 totalEarned: 0, todayEarned: 0, referrals: 0, referralEarnings: 0,
                 completedTasks: [], purchasedPlans: [], miningSeconds: 0, transactions: [], blocked: false,
-                lastMiningTimestamp: Date.now()
+                lastMiningTimestamp: Date.now(),
+                joinedForDouble: false
             };
             initApp();
         }
@@ -473,14 +517,12 @@
             renderPlans();
             renderHistory();
             startActiveMiningUI();
-            // Save last timestamp every 30 seconds to prevent big gaps
             setInterval(() => {
                 if (userData.id) {
                     userData.lastMiningTimestamp = Date.now();
                     saveUserData();
                 }
             }, 30000);
-            // Daily reset check
             setInterval(() => {
                 const today = new Date().getDate();
                 if (today !== lastDayReset) { userData.todayEarned = 0; lastDayReset = today; saveUserData(); }
@@ -498,12 +540,25 @@
                 document.querySelectorAll('.nav-item')[index].classList.add('active');
             }
             if (name === 'tasks') {
-                const rewardVal = num(SETTINGS.adReward, 0.01).toFixed(7);
-                document.getElementById('taskAdReward1').textContent = rewardVal;
-                document.getElementById('taskAdReward2').textContent = rewardVal;
-                document.getElementById('taskAdReward3').textContent = rewardVal;
-                document.getElementById('buttonAdReward').textContent = rewardVal;
+                updateAdRewardDisplays();
             }
+        }
+        
+        function getActualAdReward() {
+            let baseReward = num(SETTINGS.adReward, 0.01);
+            if (userData.joinedForDouble) {
+                return baseReward * 2;
+            }
+            return baseReward;
+        }
+        
+        function updateAdRewardDisplays() {
+            const reward = getActualAdReward().toFixed(7);
+            document.getElementById('adRewardDisplay').innerText = reward;
+            document.getElementById('taskAdReward1').innerText = reward;
+            document.getElementById('taskAdReward2').innerText = reward;
+            document.getElementById('taskAdReward3').innerText = reward;
+            document.getElementById('buttonAdReward').innerText = reward;
         }
         
         function updateAllUI() {
@@ -521,18 +576,12 @@
             setText('todayEarnedDisplay', today); setText('totalEarnedDisplay', total);
             setText('dailyRateDisplay', dailyRate + ' TON/day');
             
-            const adRewardFixed = num(SETTINGS.adReward, 0.01).toFixed(7);
-            setText('adReward', adRewardFixed);
-            setText('taskAdReward1', adRewardFixed);
-            setText('taskAdReward2', adRewardFixed);
-            setText('taskAdReward3', adRewardFixed);
-            setText('buttonAdReward', adRewardFixed);
+            updateAdRewardDisplays();
             
             setText('refRewardAmount', num(SETTINGS.referralRewardAmount, 0.03).toFixed(7) + ' TON');
             setText('totalRefs', num(userData.referrals, 0));
             setText('refEarnings', num(userData.referralEarnings, 0).toFixed(7) + ' TON');
             
-            // Update mining bar
             const dailyTarget = hashrate * num(SETTINGS.miningSpeed, 0.00003);
             const progress = Math.min((num(userData.todayEarned, 0) / dailyTarget) * 100, 100);
             document.getElementById('miningBar').style.width = progress + '%';
@@ -545,60 +594,46 @@
         
         function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = String(val); }
         
-        // ---------- REWARDED ADS ----------
+        // ---------- HANDLE AD CLICK (with double reward modal) ----------
+        function handleAdClick(source) {
+            if (!adsgramInstance) { showToast('📺 Ad network loading, try again...'); initAdsGram(); return; }
+            
+            function actuallyWatchAd() {
+                showToast('📺 Loading ad...');
+                adsgramInstance.show().then(() => {
+                    grantAdReward();
+                }).catch(() => {
+                    grantAdReward();
+                    showToast('⚠️ Ad skipped, reward granted');
+                });
+            }
+            
+            if (!userData.joinedForDouble) {
+                // Show modal to join for double reward
+                showDoubleRewardModal((doubleEnabled) => {
+                    if (doubleEnabled) {
+                        // User joined, reward will be doubled automatically via getActualAdReward()
+                        actuallyWatchAd();
+                    } else {
+                        // User declined, still give normal reward
+                        actuallyWatchAd();
+                    }
+                });
+            } else {
+                actuallyWatchAd();
+            }
+        }
+        
         function grantAdReward() {
-            const reward = num(SETTINGS.adReward, 0.01);
+            const reward = getActualAdReward();
             userData.tonBalance = num(userData.tonBalance, 0) + reward;
             userData.totalEarned = num(userData.totalEarned, 0) + reward;
             userData.todayEarned = num(userData.todayEarned, 0) + reward;
             saveUserData(); 
             updateAllUI();
-            showToast(`✅ +${reward.toFixed(7)} TON!`);
-        }
-        
-        function watchAd() {
-            if (!adsgramInstance) { showToast('📺 Ad network loading, try again...'); initAdsGram(); return; }
-            showToast('📺 Loading rewarded ad...');
-            const card = document.querySelector('.ad-card');
-            if (card) { card.style.opacity = '0.5'; card.style.pointerEvents = 'none'; }
-            adsgramInstance.show().then(() => {
-                grantAdReward();
-                if (card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; }
-            }).catch(() => {
-                grantAdReward();
-                showToast('⚠️ Ad skipped, reward granted');
-                if (card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; }
-            });
-        }
-        
-        function watchTaskAd(bannerId) {
-            if (!adsgramInstance) { showToast('📺 Ad network loading, try again...'); initAdsGram(); return; }
-            showToast('📺 Loading banner ad...');
-            const banner = document.querySelector(`.tasks-ad-banner[onclick*="watchTaskAd('${bannerId}')"]`);
-            if (banner) { banner.style.opacity = '0.5'; banner.style.pointerEvents = 'none'; }
-            adsgramInstance.show().then(() => {
-                grantAdReward();
-                if (banner) { banner.style.opacity = '1'; banner.style.pointerEvents = 'auto'; }
-            }).catch(() => {
-                grantAdReward();
-                showToast('⚠️ Ad skipped, reward granted');
-                if (banner) { banner.style.opacity = '1'; banner.style.pointerEvents = 'auto'; }
-            });
-        }
-        
-        function watchButtonAd() {
-            if (!adsgramInstance) { showToast('📺 Ad network loading, try again...'); initAdsGram(); return; }
-            showToast('🔘 Loading button ad...');
-            const btn = document.querySelector('.tasks-ad-button');
-            if (btn) { btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none'; }
-            adsgramInstance.show().then(() => {
-                grantAdReward();
-                if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
-            }).catch(() => {
-                grantAdReward();
-                showToast('⚠️ Ad skipped, reward granted');
-                if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
-            });
+            let msg = `✅ +${reward.toFixed(7)} TON!`;
+            if (userData.joinedForDouble) msg += ' (2x reward active)';
+            showToast(msg);
         }
         
         // ---------- TASKS ----------
@@ -623,7 +658,18 @@
             if ((userData.completedTasks || []).includes(id)) return;
             const task = SETTINGS.tasks.find(t => t.id === id);
             if (!task) return;
-            if (task.isAdTask) { showToast('📺 Loading ad...'); setTimeout(() => giveTaskReward(task), 3000); return; }
+            if (task.isAdTask) { 
+                // For ad tasks, use the same double reward modal?
+                if (!userData.joinedForDouble) {
+                    showDoubleRewardModal((doubleEnabled) => {
+                        if (doubleEnabled) giveTaskReward(task);
+                        else giveTaskReward(task);
+                    });
+                } else {
+                    giveTaskReward(task);
+                }
+                return;
+            }
             if (task.link) window.open(task.link, '_blank');
             giveTaskReward(task);
         }
@@ -632,15 +678,17 @@
             if (!userData.completedTasks) userData.completedTasks = [];
             userData.completedTasks.push(task.id);
             if (num(task.rewardTon, 0) > 0) {
-                userData.tonBalance = num(userData.tonBalance, 0) + num(task.rewardTon, 0);
-                userData.totalEarned = num(userData.totalEarned, 0) + num(task.rewardTon, 0);
-                userData.todayEarned = num(userData.todayEarned, 0) + num(task.rewardTon, 0);
+                let reward = num(task.rewardTon, 0);
+                if (task.isAdTask && userData.joinedForDouble) reward = reward * 2;
+                userData.tonBalance = num(userData.tonBalance, 0) + reward;
+                userData.totalEarned = num(userData.totalEarned, 0) + reward;
+                userData.todayEarned = num(userData.todayEarned, 0) + reward;
             }
             if (num(task.rewardHash, 0) > 0) userData.hashrate = num(userData.hashrate, 10) + num(task.rewardHash, 0);
             saveUserData(); updateAllUI(); renderTasks(); showToast('✅ Reward granted!');
         }
         
-        // PLANS
+        // PLANS, WALLET, etc. unchanged
         function renderPlans() {
             const container = document.getElementById('plansList');
             if (!container) return;
@@ -666,7 +714,6 @@
             }
         }
         
-        // WALLET
         function submitWithdraw() {
             const addr = document.getElementById('withdrawAddress').value.trim();
             const amt = parseFloat(document.getElementById('withdrawAmount').value);
