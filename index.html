@@ -50,13 +50,13 @@
         .task-item .task-info { flex: 1; min-width: 120px; }
         .task-item .task-info h4 { font-size: 14px; }
         .task-item .task-info p { font-size: 11px; color: #888; }
-        .task-item .task-rewards { display: flex; gap: 8px; align-items: center; }
+        .task-item .task-rewards { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .task-item .reward-badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
         .task-item .reward-ton { background: #0088cc20; color: #0088cc; }
         .task-item .reward-hash { background: #f7931a20; color: #f7931a; }
         .task-item .do-btn { background: #0088cc; color: white; border: none; padding: 8px 18px; border-radius: 15px; cursor: pointer; font-size: 12px; font-weight: bold; }
         .task-item.completed { opacity: 0.5; }
-        .task-item.completed .do-btn { background: #4caf50; }
+        .task-item.completed .do-btn { background: #4caf50; cursor: not-allowed; }
         .task-item.ad-task { border: 1px dashed #f5576c; }
         
         .plan-card { background: #0d0d20; border-radius: 12px; padding: 15px; margin-bottom: 10px; border: 1px solid #2a2a4a; }
@@ -67,7 +67,8 @@
         .plan-card .plan-stats span { color: #4fc3f7; font-weight: bold; }
         .plan-card .buy-btn { background: #0088cc; color: white; border: none; padding: 12px; border-radius: 20px; width: 100%; cursor: pointer; font-weight: bold; font-size: 14px; }
         
-        .ad-card { background: linear-gradient(135deg, #f093fb, #f5576c); padding: 15px; border-radius: 15px; text-align: center; cursor: pointer; margin-bottom: 15px; font-weight: bold; font-size: 16px; }
+        .ad-card { background: linear-gradient(135deg, #f093fb, #f5576c); padding: 15px; border-radius: 15px; text-align: center; cursor: pointer; margin-bottom: 15px; font-weight: bold; font-size: 16px; transition: all 0.2s; }
+        .ad-card:active { transform: scale(0.97); }
         
         .tasks-ad-banner { background: #1a1a2e; border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px; border: 2px dashed #f5576c; cursor: pointer; transition: all 0.2s; }
         .tasks-ad-banner:active { transform: scale(0.97); }
@@ -79,13 +80,13 @@
         .ref-box input { flex: 1; background: transparent; border: none; color: white; font-size: 11px; }
         .ref-box button { background: #0088cc; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; }
         
-        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 25px; z-index: 1000; font-size: 14px; font-weight: bold; }
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 25px; z-index: 1000; font-size: 14px; font-weight: bold; display: none; }
         
         input, select { width: 100%; padding: 12px; background: #0d0d20; border: 1px solid #333; border-radius: 10px; color: white; margin-bottom: 10px; font-size: 14px; }
         
-        /* Ad loading overlay */
-        .ad-loading { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .ad-loading { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         .ad-loading .spinner { width: 50px; height: 50px; border: 4px solid #333; border-top-color: #0088cc; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        .ad-loading p { color: white; font-size: 14px; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -106,7 +107,7 @@
                 <div class="usd">≈ $<span id="usdValue">0.00</span> USD | ⚡ <span id="homeHashrate">10</span> H/s</div>
             </div>
             
-            <div class="ad-card" onclick="watchAd()">
+            <div class="ad-card" onclick="watchHomeAd()">
                 📺 Watch Ad & Earn +<span id="adReward">0.01</span> TON
             </div>
             
@@ -129,6 +130,13 @@
         <!-- TASKS PAGE -->
         <div class="page" id="tasksPage">
             <h3 style="margin-bottom:15px;">📋 Earn Rewards</h3>
+            
+            <!-- TASK PAGE AD BANNER -->
+            <div class="tasks-ad-banner" onclick="watchTaskBannerAd()">
+                <div class="ad-icon">📺</div>
+                <div class="ad-text">Watch Ad & Earn</div>
+                <div class="ad-reward">+<span id="taskAdReward">0.01</span> TON per view</div>
+            </div>
             
             <div id="tasksList"></div>
         </div>
@@ -181,7 +189,7 @@
         </nav>
     </div>
 
-    <!-- Firebase SDK (compat version) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
@@ -190,10 +198,7 @@
     <script src="https://adsgram.ai/js/adsgram.js"></script>
 
     <script>
-        // ============================================
-        // FOXEARN - FIREBASE INTEGRATION
-        // ============================================
-        
+        // Firebase config
         const firebaseConfig = {
             apiKey: "AIzaSyDldvyBpQK95cyvzE267boV5HfOLJLTn2Q",
             authDomain: "foxiearn.firebaseapp.com",
@@ -210,27 +215,26 @@
         let currentUser = null;
         let userData = {};
         
-        // AdsGram - different block IDs for different ads (get these from your Adsgram dashboard)
-        const ADSGRAM_BLOCK_IDS = {
-            main: '30093',      // Home page ad
-            task1: '30094',     // Ad Task 1
-            task2: '30095',     // Ad Task 2  
-            task3: '30096'      // Ad Task 3
-        };
+        // SINGLE ADSGRAM BLOCK ID FOR ALL ADS
+        const ADSGRAM_BLOCK_ID = '30093';  // Your only Block ID
         
         // Default settings
         let SETTINGS = {
-            miningSpeed: 0.0001, adReward: 0.01, referralPercent: 10, tonPrice: 5.20, minWithdraw: 0.5,
+            miningSpeed: 0.0001, 
+            adReward: 0.01, 
+            referralPercent: 10, 
+            tonPrice: 5.20, 
+            minWithdraw: 0.5,
+            adCooldown: 60,
             plans: [
                 { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0050000 TON', icon:'🥉' },
                 { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0500000 TON', icon:'🥈' },
                 { id:'plan3', name:'🥇 Max', price:50, hashrate:5000, daily:'0.5000000 TON', icon:'🥇' }
             ],
-            // 3 ad tasks using Adsgram + 2 social tasks
             tasks: [
-                { id:'t0', title:'📺 Watch Ad #1', desc:'Watch short ad - Easy TON', rewardTon:0.01, rewardHash:0, icon:'📺', link:'', isAdTask:true, adBlockId:ADSGRAM_BLOCK_IDS.task1 },
-                { id:'t1', title:'📺 Watch Ad #2', desc:'Another ad - Extra TON', rewardTon:0.015, rewardHash:2, icon:'📺', link:'', isAdTask:true, adBlockId:ADSGRAM_BLOCK_IDS.task2 },
-                { id:'t2', title:'📺 Watch Ad #3', desc:'Bonus ad - More rewards', rewardTon:0.02, rewardHash:5, icon:'🎬', link:'', isAdTask:true, adBlockId:ADSGRAM_BLOCK_IDS.task3 },
+                { id:'t0', title:'📺 Watch Ad #1', desc:'Watch short ad - Easy TON', rewardTon:0.01, rewardHash:0, icon:'📺', link:'', isAdTask:true },
+                { id:'t1', title:'📺 Watch Ad #2', desc:'Another ad - Extra TON', rewardTon:0.015, rewardHash:2, icon:'📺', link:'', isAdTask:true },
+                { id:'t2', title:'📺 Watch Ad #3', desc:'Bonus ad - More rewards', rewardTon:0.02, rewardHash:5, icon:'🎬', link:'', isAdTask:true },
                 { id:'t3', title:'Join Telegram', desc:'Subscribe to channel', rewardTon:0.02, rewardHash:0, icon:'📢', link:'https://t.me/foxearn', isAdTask:false },
                 { id:'t4', title:'Follow on X', desc:'Follow us', rewardTon:0, rewardHash:5, icon:'🐦', link:'https://x.com/foxearn', isAdTask:false }
             ]
@@ -238,12 +242,12 @@
         
         let isMining = false, miningInterval = null, timerInterval = null, miningSeconds = 0, lastDayReset = new Date().getDate();
         
-        // Show loading overlay
+        // Show/hide loading overlay
         function showAdLoading() {
             let overlay = document.createElement('div');
             overlay.className = 'ad-loading';
             overlay.id = 'adLoadingOverlay';
-            overlay.innerHTML = '<div class="spinner"></div><div>Loading ad...</div><div style="font-size:12px;margin-top:10px;">Please wait</div>';
+            overlay.innerHTML = '<div class="spinner"></div><p>Loading ad...</p><p style="font-size:12px;margin-top:5px;">Please wait</p>';
             document.body.appendChild(overlay);
         }
         
@@ -252,29 +256,36 @@
             if(overlay) overlay.remove();
         }
         
-        // Generic Adsgram ad function
-        function showAdsgramAd(blockId, onSuccess, onError) {
+        // Single Adsgram ad function using your only Block ID
+        function showAdsgramAd(onSuccess, onError) {
             if (typeof Adsgram === 'undefined') {
-                showToast('📺 Ad network loading, try again...');
+                console.log('Adsgram not loaded yet');
+                showToast('📺 Ad network loading, please try again...');
                 if(onError) onError();
                 return;
             }
             
             showAdLoading();
             
-            const adController = Adsgram.init({ blockId: blockId, debug: false });
-            adController.show().then(() => {
+            try {
+                const adController = Adsgram.init({ blockId: ADSGRAM_BLOCK_ID, debug: false });
+                adController.show().then(function() {
+                    hideAdLoading();
+                    if(onSuccess) onSuccess();
+                }).catch(function(error) {
+                    hideAdLoading();
+                    console.error('Ad error:', error);
+                    if(onError) onError();
+                });
+            } catch(e) {
                 hideAdLoading();
-                if(onSuccess) onSuccess();
-            }).catch((error) => {
-                hideAdLoading();
-                console.error('Ad error:', error);
+                console.error('Ad exception:', e);
                 if(onError) onError();
-            });
+            }
         }
         
         // ============================================
-        // AUTH - Sign in anonymously
+        // AUTH
         // ============================================
         auth.signInAnonymously().catch(function(error) {
             console.log("Auth error, using local mode:", error.message);
@@ -343,8 +354,6 @@
                     if(cloudSettings.minWithdraw) SETTINGS.minWithdraw = cloudSettings.minWithdraw;
                     if(cloudSettings.plans) SETTINGS.plans = cloudSettings.plans;
                     if(cloudSettings.tasks) SETTINGS.tasks = cloudSettings.tasks;
-                } else {
-                    db.collection('settings').doc('global').set(SETTINGS);
                 }
                 if(!userData.id) return;
                 initApp();
@@ -372,8 +381,6 @@
                 transactions: [],
                 blocked: false
             };
-            const savedSettings = localStorage.getItem('foxearn_ton_settings');
-            if(savedSettings) SETTINGS = {...SETTINGS, ...JSON.parse(savedSettings)};
             initApp();
         }
         
@@ -394,7 +401,7 @@
             renderTasks();
             renderPlans();
             renderHistory();
-            setInterval(() => {
+            setInterval(function() {
                 const today = new Date().getDate();
                 if(today !== lastDayReset) {
                     userData.todayEarned = 0;
@@ -408,10 +415,10 @@
         // NAVIGATION
         // ============================================
         function showPage(name) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
             var pageEl = document.getElementById(name + 'Page');
             if(pageEl) pageEl.classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
             var pages = ['home','tasks','plans','referral','wallet'];
             var index = pages.indexOf(name);
             if(index !== -1) {
@@ -436,6 +443,7 @@
             setText('totalEarnedDisplay', userData.totalEarned.toFixed(7));
             setText('projectedDaily', (userData.hashrate * SETTINGS.miningSpeed).toFixed(7) + ' TON');
             setText('adReward', SETTINGS.adReward.toFixed(2));
+            setText('taskAdReward', SETTINGS.adReward.toFixed(2));
             setText('refBonus', SETTINGS.referralPercent + '%');
             setText('totalRefs', userData.referrals);
             setText('refEarnings', userData.referralEarnings.toFixed(7) + ' TON');
@@ -492,11 +500,12 @@
         }
         
         // ============================================
-        // WATCH AD (Home Page - Adsgram)
+        // ADS FUNCTIONS - All using same Block ID 30093
         // ============================================
-        function watchAd() {
-            showAdsgramAd(ADSGRAM_BLOCK_IDS.main, function() {
-                // Ad completed - give reward
+        
+        // Home page ad
+        function watchHomeAd() {
+            showAdsgramAd(function() {
                 userData.tonBalance += SETTINGS.adReward;
                 userData.totalEarned += SETTINGS.adReward;
                 userData.todayEarned += SETTINGS.adReward;
@@ -504,24 +513,43 @@
                 updateAllUI();
                 showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
             }, function() {
-                // Ad failed/skipped - still give reward
+                // Even if ad fails, give reward
                 userData.tonBalance += SETTINGS.adReward;
                 userData.totalEarned += SETTINGS.adReward;
                 userData.todayEarned += SETTINGS.adReward;
                 saveUserData();
                 updateAllUI();
-                showToast('⚠️ Ad skipped, reward granted');
+                showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
+            });
+        }
+        
+        // Tasks page banner ad
+        function watchTaskBannerAd() {
+            showAdsgramAd(function() {
+                userData.tonBalance += SETTINGS.adReward;
+                userData.totalEarned += SETTINGS.adReward;
+                userData.todayEarned += SETTINGS.adReward;
+                saveUserData();
+                updateAllUI();
+                showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
+            }, function() {
+                userData.tonBalance += SETTINGS.adReward;
+                userData.totalEarned += SETTINGS.adReward;
+                userData.todayEarned += SETTINGS.adReward;
+                saveUserData();
+                updateAllUI();
+                showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
             });
         }
         
         // ============================================
-        // TASKS (with Adsgram for ad tasks)
+        // TASKS
         // ============================================
         function renderTasks() {
             var container = document.getElementById('tasksList');
             if(!container) return;
             container.innerHTML = SETTINGS.tasks.map(function(t) {
-                var done = userData.completedTasks.includes(t.id);
+                var done = userData.completedTasks && userData.completedTasks.includes(t.id);
                 var rewardHTML = '';
                 if(t.rewardTon > 0) rewardHTML += '<span class="reward-badge reward-ton">+' + t.rewardTon + ' TON</span>';
                 if(t.rewardHash > 0) rewardHTML += '<span class="reward-badge reward-hash">+' + t.rewardHash + ' H/s</span>';
@@ -535,27 +563,38 @@
         }
         
         function doTask(id) {
-            if(userData.completedTasks.includes(id)) return;
+            if(userData.completedTasks && userData.completedTasks.includes(id)) {
+                showToast('Task already completed!');
+                return;
+            }
             var task = SETTINGS.tasks.find(function(t) { return t.id === id; });
             if(!task) return;
             
             if(task.isAdTask) {
-                // Use Adsgram for ad tasks with their specific block IDs
-                const blockId = task.adBlockId || ADSGRAM_BLOCK_IDS.task1;
-                showAdsgramAd(blockId, function() {
+                // Show ad using your single Block ID
+                showAdsgramAd(function() {
                     giveTaskReward(task);
                 }, function() {
-                    giveTaskReward(task); // Still give reward even if ad fails/skipped
+                    giveTaskReward(task);
                 });
                 return;
             }
             
-            if(task.link) window.open(task.link, '_blank');
-            giveTaskReward(task);
+            if(task.link) {
+                window.open(task.link, '_blank');
+                setTimeout(function() {
+                    if(confirm('Did you complete the action? Click OK to claim reward.')) {
+                        giveTaskReward(task);
+                    }
+                }, 1000);
+            } else {
+                giveTaskReward(task);
+            }
         }
         
         function giveTaskReward(task) {
-            if(userData.completedTasks.includes(task.id)) return;
+            if(userData.completedTasks && userData.completedTasks.includes(task.id)) return;
+            if(!userData.completedTasks) userData.completedTasks = [];
             userData.completedTasks.push(task.id);
             var msg = '✅ ';
             if(task.rewardTon > 0) {
@@ -593,9 +632,10 @@
             var plan = SETTINGS.plans.find(function(p) { return p.id === id; });
             if(!plan) return;
             if(userData.tonBalance < plan.price) return showToast('❌ Not enough TON!');
-            if(confirm('Buy ' + plan.name + ' for ' + plan.price + ' TON?')) {
+            if(confirm('Buy ' + plan.name + ' for ' + plan.price + ' TON? This will add ' + plan.hashrate + ' H/s permanently.')) {
                 userData.tonBalance -= plan.price;
                 userData.hashrate += plan.hashrate;
+                if(!userData.purchasedPlans) userData.purchasedPlans = [];
                 userData.purchasedPlans.push(id);
                 saveUserData();
                 updateAllUI();
@@ -612,8 +652,9 @@
             if(!addr) return showToast('❌ Enter address!');
             if(!amt || amt < SETTINGS.minWithdraw) return showToast('❌ Min ' + SETTINGS.minWithdraw + ' TON!');
             if(amt > userData.tonBalance) return showToast('❌ Not enough!');
-            if(confirm('Withdraw ' + amt + ' TON?')) {
+            if(confirm('Withdraw ' + amt + ' TON to ' + addr + '?')) {
                 userData.tonBalance -= amt;
+                if(!userData.transactions) userData.transactions = [];
                 userData.transactions.push({ type:'withdraw', amount:amt, address:addr, date:new Date().toLocaleString(), status:'pending' });
                 if(isMining) stopMining();
                 saveUserData();
@@ -621,7 +662,7 @@
                 renderHistory();
                 document.getElementById('withdrawAddress').value = '';
                 document.getElementById('withdrawAmount').value = '';
-                showToast('✅ Submitted!');
+                showToast('✅ Withdrawal request submitted!');
             }
         }
         
@@ -629,7 +670,11 @@
             var i = document.querySelector('#walletPage .ref-box input');
             if(i) { i.select(); document.execCommand('copy'); showToast('📋 Copied!'); }
         }
-        function depositStars() { showToast('⭐ Opening...'); window.open('https://t.me/FoxEarnBot', '_blank'); }
+        
+        function depositStars() { 
+            showToast('⭐ Opening...'); 
+            window.open('https://t.me/FoxEarnBot', '_blank'); 
+        }
         
         function renderHistory() {
             var c = document.getElementById('txHistory');
@@ -642,22 +687,27 @@
                 return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #2a2a4a;font-size:12px;">' +
                     '<span>' + (tx.type==='withdraw'?'💸':'💰') + '</span>' +
                     '<span style="color:' + (tx.type==='withdraw'?'#f44336':'#4caf50') + '">' + (tx.type==='withdraw'?'-':'+') + tx.amount + ' TON</span>' +
-                    '<span style="color:#888;">' + tx.date + '</span>' +
+                    '<span style="color:#888;">' + (tx.date || '') + '</span>' +
                 '</div>';
             }).join('');
         }
         
         function copyRef() {
             var refLink = document.getElementById('refLink');
-            if(refLink) { refLink.select(); document.execCommand('copy'); showToast('📋 Copied!'); }
+            if(refLink) { refLink.select(); document.execCommand('copy'); showToast('📋 Referral link copied!'); }
         }
         
         function showToast(msg) {
-            var t = document.createElement('div');
-            t.className = 'toast';
+            var t = document.getElementById('toast');
+            if(!t) {
+                t = document.createElement('div');
+                t.className = 'toast';
+                t.id = 'toast';
+                document.body.appendChild(t);
+            }
             t.textContent = msg;
-            document.body.appendChild(t);
-            setTimeout(function() { t.remove(); }, 2500);
+            t.style.display = 'block';
+            setTimeout(function() { t.style.display = 'none'; }, 3000);
         }
     </script>
 </body>
