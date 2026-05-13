@@ -38,6 +38,7 @@
         .btn:active { transform: scale(0.97); }
         .btn-start { background: #4caf50; font-size: 18px; }
         .btn-ton { background: #0088cc; }
+        .btn-wallet { background: #f7931a; margin-bottom: 10px; }
         
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a2e; display: flex; justify-content: space-around; padding: 10px; border-top: 1px solid #333; z-index: 100; max-width: 430px; margin: 0 auto; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: #888; cursor: pointer; font-size: 11px; gap: 4px; }
@@ -66,7 +67,6 @@
         .plan-card .plan-stats span { color: #4fc3f7; font-weight: bold; }
         .plan-card .buy-btn { background: #0088cc; color: white; border: none; padding: 12px; border-radius: 20px; width: 100%; cursor: pointer; font-weight: bold; font-size: 14px; }
         
-        /* Ad cards - no transitions, no blinking */
         .ad-card, .tasks-ad-banner, .tasks-ad-button {
             cursor: pointer;
             transition: none;
@@ -94,6 +94,8 @@
         
         .mining-status { display: inline-block; width: 10px; height: 10px; background-color: #4caf50; border-radius: 50%; margin-right: 5px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+        
+        .wallet-buttons { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -185,25 +187,37 @@
             </div>
         </div>
 
-        <!-- WALLET PAGE -->
+        <!-- WALLET PAGE (updated) -->
         <div class="page" id="walletPage">
             <h3 style="margin-bottom:15px;">💼 Wallet</h3>
             <div class="card" style="text-align:center;">
                 <div style="font-size:36px;font-family:monospace;color:#0088cc;">💰 <span id="walletBalance">0.0000000</span></div>
                 <div style="font-size:13px;color:#888;">≈ $<span id="walletUsd">0.00</span> USD</div>
             </div>
-            <div class="card"><h3>💸 Withdraw TON</h3>
+
+            <div class="card">
+                <h3>💸 Withdraw TON</h3>
                 <input type="text" id="withdrawAddress" placeholder="Your TON wallet address">
                 <input type="number" id="withdrawAmount" placeholder="Amount (min 0.5 TON)" step="0.1" min="0.5">
                 <button class="btn btn-ton" onclick="submitWithdraw()">💸 Withdraw</button>
             </div>
-            <div class="card"><h3>💰 Deposit</h3>
-                <p style="color:#888;font-size:13px;margin-bottom:10px;">Send TON to:</p>
-                <div class="ref-box"><input type="text" id="depositAddressDisplay" readonly><button onclick="copyDeposit()">📋</button></div>
-                <button class="btn btn-ton" onclick="openTonWallet()" style="margin-bottom:8px;">💎 Open TON Wallet</button>
-                <button class="btn btn-ton" onclick="depositStars()">⭐ Deposit Stars</button>
+
+            <div class="card">
+                <h3>💰 Deposit Options</h3>
+                <div class="wallet-buttons">
+                    <button class="btn btn-wallet" onclick="openWallet('ton')">💎 My TON Wallet (Tonkeeper)</button>
+                    <button class="btn btn-wallet" onclick="openWallet('binance')">📱 Binance (Deposit TON)</button>
+                </div>
+                <div class="ref-box" style="margin-top:10px;">
+                    <input type="text" id="depositAddressDisplay" readonly>
+                    <button onclick="copyDeposit()">📋 Copy</button>
+                </div>
             </div>
-            <div class="card"><h3>📜 History</h3><div id="txHistory"><p style="color:#888;">No transactions</p></div></div>
+
+            <div class="card">
+                <h3>📜 History</h3>
+                <div id="txHistory"><p style="color:#888;">No transactions</p></div>
+            </div>
         </div>
 
         <nav class="bottom-nav">
@@ -225,7 +239,7 @@
 
     <script>
         // ============================================
-        // FOXEARN - NO DOUBLE REWARD, NO BLINKING, PASSIVE MINING
+        // FOXEARN - NO BLINKING, UPDATED WALLET
         // ============================================
         
         function num(val, fallback) {
@@ -282,9 +296,7 @@
         };
         let SETTINGS = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
         
-        // Passive mining variables
         let lastMiningTimestamp = null;
-        let timerInterval = null;
         let miningSeconds = 0;
         let lastDayReset = new Date().getDate();
         
@@ -348,7 +360,6 @@
             }, 1000);
         }
         
-        // AUTH
         auth.signInAnonymously().catch(() => startAppLocal());
         auth.onAuthStateChanged(user => {
             if (user) { currentUser = user; loadUserFromCloud(user.uid); loadSettingsFromCloud(); }
@@ -526,7 +537,7 @@
         
         function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = String(val); }
         
-        // ---------- REWARDED ADS (simple, no double, no blinking) ----------
+        // ---------- REWARDED ADS (NO BLINKING) ----------
         function grantAdReward() {
             const reward = num(SETTINGS.adReward, 0.01);
             userData.tonBalance = num(userData.tonBalance, 0) + reward;
@@ -593,8 +604,7 @@
             const task = SETTINGS.tasks.find(t => t.id === id);
             if (!task) return;
             if (task.isAdTask) { 
-                // For ad tasks, just reward directly (no modal)
-                giveTaskReward(task);
+                watchAd();
                 return;
             }
             if (task.link) window.open(task.link, '_blank');
@@ -639,7 +649,7 @@
             }
         }
         
-        // WALLET
+        // WALLET with new options
         function submitWithdraw() {
             const addr = document.getElementById('withdrawAddress').value.trim();
             const amt = parseFloat(document.getElementById('withdrawAmount').value);
@@ -657,17 +667,19 @@
             }
         }
         
+        function openWallet(type) {
+            if (type === 'ton') {
+                const addr = SETTINGS.depositAddress || DEFAULT_SETTINGS.depositAddress;
+                window.open('https://app.tonkeeper.com/transfer/' + addr, '_blank');
+            } else if (type === 'binance') {
+                window.open('https://www.binance.com/en/pay/deposit?crypto=TON', '_blank');
+            }
+        }
+        
         function copyDeposit() {
             const addr = SETTINGS.depositAddress || DEFAULT_SETTINGS.depositAddress;
             navigator.clipboard.writeText(addr).then(() => showToast('📋 Copied!')).catch(() => showToast('Copy manually: ' + addr));
         }
-        
-        function openTonWallet() {
-            const addr = SETTINGS.depositAddress || DEFAULT_SETTINGS.depositAddress;
-            window.open('https://app.tonkeeper.com/transfer/' + addr, '_blank');
-        }
-        
-        function depositStars() { showToast('⭐ Opening...'); window.open('https://t.me/TonFoxEarnBot', '_blank'); }
         
         function renderHistory() {
             const c = document.getElementById('txHistory');
