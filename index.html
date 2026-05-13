@@ -194,8 +194,14 @@
 
     <script>
         // ============================================
-        // FOXEARN - FIREBASE INTEGRATION
+        // NaN-PROOF FOXEARN
         // ============================================
+        
+        // Helper: always return a valid number
+        function num(val, fallback) {
+            const n = Number(val);
+            return isNaN(n) ? (fallback || 0) : n;
+        }
         
         const firebaseConfig = {
             apiKey: "AIzaSyDldvyBpQK95cyvzE267boV5HfOLJLTn2Q",
@@ -212,23 +218,22 @@
         
         let currentUser = null;
         let userData = {};
-        
-        // AdsGram
         let adsgramInstance = null;
         const ADSGRAM_BLOCK_ID = '30093';
         
         function initAdsGram() {
-            if (typeof Adsgram !== 'undefined') {
-                adsgramInstance = Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
-                console.log('✅ AdsGram ready');
-            } else {
-                setTimeout(initAdsGram, 1000);
-            }
+            if (typeof Adsgram !== 'undefined') adsgramInstance = Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+            else setTimeout(initAdsGram, 1000);
         }
         
-        let SETTINGS = {
-            miningSpeed: 0.0001, adReward: 0.01, referralPercent: 10, tonPrice: 5.20, minWithdraw: 0.5,
-            depositAddress: 'UQD...YourWallet',   // will be overwritten from cloud
+        // Default settings (rock-solid defaults)
+        const DEFAULT_SETTINGS = {
+            miningSpeed: 0.0001,
+            tonPrice: 5.20,
+            adReward: 0.01,
+            minWithdraw: 0.5,
+            referralPercent: 10,
+            depositAddress: 'UQD...YourWallet',
             plans: [
                 { id:'plan1', name:'🥉 Starter', price:2, hashrate:50, daily:'0.0050000 TON', icon:'🥉' },
                 { id:'plan2', name:'🥈 Pro', price:10, hashrate:500, daily:'0.0500000 TON', icon:'🥈' },
@@ -242,13 +247,14 @@
                 { id:'t4', title:'Invite Friends', desc:'Share link', rewardTon:0.05, rewardHash:0, icon:'👥', link:'', isAdTask:false }
             ]
         };
+        let SETTINGS = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
         
         let isMining = false, miningInterval = null, timerInterval = null, miningSeconds = 0, lastDayReset = new Date().getDate();
         
         // ============================================
         // AUTH
         // ============================================
-        auth.signInAnonymously().catch(e => startAppLocal());
+        auth.signInAnonymously().catch(() => startAppLocal());
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
@@ -261,42 +267,48 @@
             db.collection('users').doc(uid).get().then(doc => {
                 if (doc.exists) {
                     userData = doc.data();
+                    userData.tonBalance = num(userData.tonBalance, 0);
+                    userData.hashrate = num(userData.hashrate, 10);
+                    userData.totalEarned = num(userData.totalEarned, 0);
+                    userData.todayEarned = num(userData.todayEarned, 0);
+                    userData.referrals = num(userData.referrals, 0);
+                    userData.referralEarnings = num(userData.referralEarnings, 0);
                     if (userData.blocked) {
-                        document.querySelector('.app').innerHTML = '<div style="text-align:center;padding:50px;"><h1 style="color:#f44336;">🚫 Account Blocked</h1><p>Contact admin.</p></div>';
+                        document.querySelector('.app').innerHTML = '<div style="text-align:center;padding:50px;"><h1 style="color:#f44336;">🚫 Account Blocked</h1></div>';
                         return;
                     }
                 } else {
                     userData = {
-                        id: uid, username: 'Miner', tonBalance: 0, hashrate: 10, totalEarned: 0,
-                        todayEarned: 0, referrals: 0, referralEarnings: 0, completedTasks: [],
-                        purchasedPlans: [], miningSeconds: 0, transactions: [], blocked: false,
-                        createdAt: new Date().toISOString()
+                        id: uid, username: 'Miner', tonBalance: 0, hashrate: 10,
+                        totalEarned: 0, todayEarned: 0, referrals: 0, referralEarnings: 0,
+                        completedTasks: [], purchasedPlans: [], miningSeconds: 0,
+                        transactions: [], blocked: false, createdAt: new Date().toISOString()
                     };
                     saveUserToCloud();
                 }
                 initApp();
-            }).catch(e => startAppLocal());
+            }).catch(() => startAppLocal());
         }
         
         function saveUserToCloud() {
             if (!currentUser) return;
-            db.collection('users').doc(currentUser.uid).set(userData, { merge: true }).catch(e => console.log('Save error:', e));
+            db.collection('users').doc(currentUser.uid).set(userData, { merge: true }).catch(e => {});
         }
         
         function loadSettingsFromCloud() {
             db.collection('settings').doc('global').get().then(doc => {
                 if (doc.exists) {
                     const cloud = doc.data();
-                    if (cloud.miningSpeed) SETTINGS.miningSpeed = cloud.miningSpeed;
-                    if (cloud.adReward) SETTINGS.adReward = cloud.adReward;
-                    if (cloud.referralPercent) SETTINGS.referralPercent = cloud.referralPercent;
-                    if (cloud.tonPrice) SETTINGS.tonPrice = cloud.tonPrice;
-                    if (cloud.minWithdraw) SETTINGS.minWithdraw = cloud.minWithdraw;
-                    if (cloud.depositAddress) SETTINGS.depositAddress = cloud.depositAddress;
-                    if (cloud.plans) SETTINGS.plans = cloud.plans;
-                    if (cloud.tasks) SETTINGS.tasks = cloud.tasks;
+                    SETTINGS.miningSpeed = num(cloud.miningSpeed, DEFAULT_SETTINGS.miningSpeed);
+                    SETTINGS.tonPrice = num(cloud.tonPrice, DEFAULT_SETTINGS.tonPrice);
+                    SETTINGS.adReward = num(cloud.adReward, DEFAULT_SETTINGS.adReward);
+                    SETTINGS.minWithdraw = num(cloud.minWithdraw, DEFAULT_SETTINGS.minWithdraw);
+                    SETTINGS.referralPercent = num(cloud.referralPercent, DEFAULT_SETTINGS.referralPercent);
+                    SETTINGS.depositAddress = cloud.depositAddress || DEFAULT_SETTINGS.depositAddress;
+                    if (cloud.plans && Array.isArray(cloud.plans) && cloud.plans.length) SETTINGS.plans = cloud.plans;
+                    if (cloud.tasks && Array.isArray(cloud.tasks) && cloud.tasks.length) SETTINGS.tasks = cloud.tasks;
                 } else {
-                    db.collection('settings').doc('global').set(SETTINGS);
+                    db.collection('settings').doc('global').set(DEFAULT_SETTINGS);
                 }
                 if (userData.id) initApp();
             }).catch(() => { if (userData.id) initApp(); });
@@ -307,10 +319,9 @@
             userData = {
                 id: 'local_' + Date.now(), username: 'Miner', tonBalance: 0, hashrate: 10,
                 totalEarned: 0, todayEarned: 0, referrals: 0, referralEarnings: 0,
-                completedTasks: [], purchasedPlans: [], miningSeconds: 0, transactions: [], blocked: false
+                completedTasks: [], purchasedPlans: [], miningSeconds: 0,
+                transactions: [], blocked: false
             };
-            const saved = localStorage.getItem('foxearn_ton_settings');
-            if (saved) SETTINGS = { ...SETTINGS, ...JSON.parse(saved) };
             initApp();
         }
         
@@ -343,124 +354,132 @@
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             const pages = ['home','tasks','plans','referral','wallet'];
             const index = pages.indexOf(name);
-            if (index !== -1) {
-                const navs = document.querySelectorAll('.nav-item');
-                if (navs[index]) navs[index].classList.add('active');
+            if (index !== -1 && document.querySelectorAll('.nav-item')[index]) {
+                document.querySelectorAll('.nav-item')[index].classList.add('active');
             }
             if (name === 'tasks') {
-                const adRewardEl = document.getElementById('taskAdReward');
-                if (adRewardEl) adRewardEl.textContent = SETTINGS.adReward.toFixed(2);
+                const el = document.getElementById('taskAdReward');
+                if (el) el.textContent = num(SETTINGS.adReward, 0.01).toFixed(2);
             }
         }
         
         function updateAllUI() {
-            const bal = userData.tonBalance.toFixed(7);
+            const bal = num(userData.tonBalance, 0).toFixed(7);
+            const tonPrice = num(SETTINGS.tonPrice, 5.20);
+            const hashrate = num(userData.hashrate, 10);
+            const today = num(userData.todayEarned, 0).toFixed(7);
+            const total = num(userData.totalEarned, 0).toFixed(7);
+            const projected = (hashrate * num(SETTINGS.miningSpeed, 0.0001)).toFixed(7);
+            
             setText('tonBalance', bal);
             setText('headerBalance', bal);
             setText('walletBalance', bal);
-            setText('usdValue', (userData.tonBalance * SETTINGS.tonPrice).toFixed(2));
-            setText('walletUsd', (userData.tonBalance * SETTINGS.tonPrice).toFixed(2));
-            setText('hashrateDisplay', userData.hashrate + ' H/s');
-            setText('homeHashrate', userData.hashrate);
-            setText('todayEarnedDisplay', userData.todayEarned.toFixed(7));
-            setText('totalEarnedDisplay', userData.totalEarned.toFixed(7));
-            setText('projectedDaily', (userData.hashrate * SETTINGS.miningSpeed).toFixed(7) + ' TON');
-            setText('adReward', SETTINGS.adReward.toFixed(2));
-            setText('taskAdReward', SETTINGS.adReward.toFixed(2));
-            setText('refBonus', SETTINGS.referralPercent + '%');
-            setText('totalRefs', userData.referrals);
-            setText('refEarnings', userData.referralEarnings.toFixed(7) + ' TON');
+            setText('usdValue', (num(userData.tonBalance, 0) * tonPrice).toFixed(2));
+            setText('walletUsd', (num(userData.tonBalance, 0) * tonPrice).toFixed(2));
+            setText('hashrateDisplay', hashrate + ' H/s');
+            setText('homeHashrate', hashrate);
+            setText('todayEarnedDisplay', today);
+            setText('totalEarnedDisplay', total);
+            setText('projectedDaily', projected + ' TON');
+            setText('adReward', num(SETTINGS.adReward, 0.01).toFixed(2));
+            setText('taskAdReward', num(SETTINGS.adReward, 0.01).toFixed(2));
+            setText('refBonus', num(SETTINGS.referralPercent, 10) + '%');
+            setText('totalRefs', num(userData.referrals, 0));
+            setText('refEarnings', num(userData.referralEarnings, 0).toFixed(7) + ' TON');
             
-            // Referral link
             const refLink = document.getElementById('refLink');
-            if (refLink) refLink.value = 'https://t.me/TonFoxEarnBot?start=' + userData.id;
+            if (refLink) refLink.value = 'https://t.me/TonFoxEarnBot?start=' + (userData.id || 'unknown');
             
-            // Deposit address
             const depDisplay = document.getElementById('depositAddressDisplay');
-            if (depDisplay) depDisplay.value = SETTINGS.depositAddress || 'UQD...YourWallet';
+            if (depDisplay) depDisplay.value = SETTINGS.depositAddress || DEFAULT_SETTINGS.depositAddress;
         }
         
         function setText(id, val) {
             const el = document.getElementById(id);
-            if (el) el.textContent = val;
+            if (el) el.textContent = String(val);
         }
         
-        // --- Mining (unchanged) ---
         function toggleMining() { if (isMining) stopMining(); else startMining(); }
+        
         function startMining() {
             isMining = true;
-            const btn = document.getElementById('mineBtn');
-            btn.textContent = '⏹ STOP MINING'; btn.className = 'btn btn-stop';
-            const rate = (userData.hashrate * SETTINGS.miningSpeed) / 86400;
+            document.getElementById('mineBtn').textContent = '⏹ STOP MINING';
+            document.getElementById('mineBtn').className = 'btn btn-stop';
+            const rate = (num(userData.hashrate, 10) * num(SETTINGS.miningSpeed, 0.0001)) / 86400;
             miningInterval = setInterval(() => {
-                userData.tonBalance += rate; userData.totalEarned += rate; userData.todayEarned += rate;
-                setText('tonBalance', userData.tonBalance.toFixed(7));
-                setText('headerBalance', userData.tonBalance.toFixed(7));
-                setText('todayEarnedDisplay', userData.todayEarned.toFixed(7));
-                setText('totalEarnedDisplay', userData.totalEarned.toFixed(7));
-                setText('usdValue', (userData.tonBalance * SETTINGS.tonPrice).toFixed(2));
-                const bar = document.getElementById('miningBar');
-                if (bar) bar.style.width = Math.min((miningSeconds % 86400) / 86400 * 100, 100) + '%';
+                userData.tonBalance = num(userData.tonBalance, 0) + rate;
+                userData.totalEarned = num(userData.totalEarned, 0) + rate;
+                userData.todayEarned = num(userData.todayEarned, 0) + rate;
+                updateAllUI();
                 if (Math.random() < 0.05) saveUserData();
             }, 1000);
             timerInterval = setInterval(() => {
                 miningSeconds++;
                 const el = document.getElementById('miningTimer');
-                if (el) el.textContent = Math.floor(miningSeconds/3600).toString().padStart(2,'0')+':'+Math.floor((miningSeconds%3600)/60).toString().padStart(2,'0')+':'+(miningSeconds%60).toString().padStart(2,'0');
+                if (el) el.textContent = String(Math.floor(miningSeconds/3600)).padStart(2,'0')+':'+String(Math.floor((miningSeconds%3600)/60)).padStart(2,'0')+':'+String(miningSeconds%60).padStart(2,'0');
             }, 1000);
         }
+        
         function stopMining() {
-            isMining = false; clearInterval(miningInterval); clearInterval(timerInterval);
-            const btn = document.getElementById('mineBtn');
-            btn.textContent = '▶ START MINING'; btn.className = 'btn btn-start';
+            isMining = false;
+            clearInterval(miningInterval);
+            clearInterval(timerInterval);
+            document.getElementById('mineBtn').textContent = '▶ START MINING';
+            document.getElementById('mineBtn').className = 'btn btn-start';
             saveUserData();
         }
         
-        // --- Ads (AdsGram) ---
         function watchAd() {
-            if (!adsgramInstance) { showToast('📺 Ad network loading...'); initAdsGram(); return; }
-            showToast('📺 Loading rewarded ad...');
+            if (!adsgramInstance) { initAdsGram(); return; }
             const card = document.querySelector('.ad-card');
             if (card) { card.style.opacity = '0.5'; card.style.pointerEvents = 'none'; }
             adsgramInstance.show().then(() => {
-                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                userData.tonBalance = num(userData.tonBalance, 0) + num(SETTINGS.adReward, 0.01);
+                userData.totalEarned = num(userData.totalEarned, 0) + num(SETTINGS.adReward, 0.01);
+                userData.todayEarned = num(userData.todayEarned, 0) + num(SETTINGS.adReward, 0.01);
                 saveUserData(); updateAllUI();
-                showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
+                showToast('✅ +' + num(SETTINGS.adReward, 0.01).toFixed(2) + ' TON!');
                 if (card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; }
             }).catch(() => {
-                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                userData.tonBalance = num(userData.tonBalance, 0) + num(SETTINGS.adReward, 0.01);
+                userData.totalEarned = num(userData.totalEarned, 0) + num(SETTINGS.adReward, 0.01);
+                userData.todayEarned = num(userData.todayEarned, 0) + num(SETTINGS.adReward, 0.01);
                 saveUserData(); updateAllUI();
                 showToast('⚠️ Ad skipped, reward granted');
                 if (card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; }
             });
         }
+        
         function watchTaskAd() {
-            if (!adsgramInstance) { showToast('📺 Ad network loading...'); initAdsGram(); return; }
-            showToast('📺 Loading rewarded ad...');
+            if (!adsgramInstance) { initAdsGram(); return; }
             const banner = document.querySelector('.tasks-ad-banner');
             if (banner) { banner.style.opacity = '0.5'; banner.style.pointerEvents = 'none'; }
             adsgramInstance.show().then(() => {
-                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                userData.tonBalance = num(userData.tonBalance, 0) + num(SETTINGS.adReward, 0.01);
+                userData.totalEarned = num(userData.totalEarned, 0) + num(SETTINGS.adReward, 0.01);
+                userData.todayEarned = num(userData.todayEarned, 0) + num(SETTINGS.adReward, 0.01);
                 saveUserData(); updateAllUI();
-                showToast('✅ +' + SETTINGS.adReward.toFixed(2) + ' TON!');
+                showToast('✅ +' + num(SETTINGS.adReward, 0.01).toFixed(2) + ' TON!');
                 if (banner) { banner.style.opacity = '1'; banner.style.pointerEvents = 'auto'; }
             }).catch(() => {
-                userData.tonBalance += SETTINGS.adReward; userData.totalEarned += SETTINGS.adReward; userData.todayEarned += SETTINGS.adReward;
+                userData.tonBalance = num(userData.tonBalance, 0) + num(SETTINGS.adReward, 0.01);
+                userData.totalEarned = num(userData.totalEarned, 0) + num(SETTINGS.adReward, 0.01);
+                userData.todayEarned = num(userData.todayEarned, 0) + num(SETTINGS.adReward, 0.01);
                 saveUserData(); updateAllUI();
                 showToast('⚠️ Ad skipped, reward granted');
                 if (banner) { banner.style.opacity = '1'; banner.style.pointerEvents = 'auto'; }
             });
         }
         
-        // --- Tasks (unchanged) ---
+        // Tasks, Plans, Wallet (same as before but using num() safely)
         function renderTasks() {
             const container = document.getElementById('tasksList');
             if (!container) return;
             container.innerHTML = SETTINGS.tasks.map(t => {
-                const done = userData.completedTasks.includes(t.id);
+                const done = (userData.completedTasks || []).includes(t.id);
                 let rewardHTML = '';
-                if (t.rewardTon > 0) rewardHTML += '<span class="reward-badge reward-ton">+' + t.rewardTon + ' TON</span>';
-                if (t.rewardHash > 0) rewardHTML += '<span class="reward-badge reward-hash">+' + t.rewardHash + ' H/s</span>';
+                if (num(t.rewardTon, 0) > 0) rewardHTML += '<span class="reward-badge reward-ton">+' + num(t.rewardTon, 0) + ' TON</span>';
+                if (num(t.rewardHash, 0) > 0) rewardHTML += '<span class="reward-badge reward-hash">+' + num(t.rewardHash, 0) + ' H/s</span>';
                 return `<div class="task-item ${done ? 'completed' : ''} ${t.isAdTask ? 'ad-task' : ''}">
                     <div class="task-icon">${t.icon}</div>
                     <div class="task-info"><h4>${t.title}</h4><p>${t.desc}</p></div>
@@ -469,8 +488,9 @@
                 </div>`;
             }).join('');
         }
+        
         function doTask(id) {
-            if (userData.completedTasks.includes(id)) return;
+            if ((userData.completedTasks || []).includes(id)) return;
             const task = SETTINGS.tasks.find(t => t.id === id);
             if (!task) return;
             if (task.isAdTask) {
@@ -481,45 +501,54 @@
             if (task.link) window.open(task.link, '_blank');
             giveTaskReward(task);
         }
+        
         function giveTaskReward(task) {
+            if (!userData.completedTasks) userData.completedTasks = [];
             userData.completedTasks.push(task.id);
-            let msg = '✅ ';
-            if (task.rewardTon > 0) { userData.tonBalance += task.rewardTon; userData.totalEarned += task.rewardTon; userData.todayEarned += task.rewardTon; msg += '+' + task.rewardTon + ' TON '; }
-            if (task.rewardHash > 0) { userData.hashrate += task.rewardHash; msg += '+' + task.rewardHash + ' H/s'; }
-            saveUserData(); updateAllUI(); renderTasks(); showToast(msg);
+            if (num(task.rewardTon, 0) > 0) {
+                userData.tonBalance = num(userData.tonBalance, 0) + num(task.rewardTon, 0);
+                userData.totalEarned = num(userData.totalEarned, 0) + num(task.rewardTon, 0);
+                userData.todayEarned = num(userData.todayEarned, 0) + num(task.rewardTon, 0);
+            }
+            if (num(task.rewardHash, 0) > 0) userData.hashrate = num(userData.hashrate, 10) + num(task.rewardHash, 0);
+            saveUserData(); updateAllUI(); renderTasks();
+            showToast('✅ Reward granted!');
         }
         
-        // --- Plans (unchanged) ---
         function renderPlans() {
             const container = document.getElementById('plansList');
             if (!container) return;
             container.innerHTML = SETTINGS.plans.map(p => `
                 <div class="plan-card">
-                    <div class="plan-header"><span class="plan-name">${p.name}</span><span class="plan-price">${p.price} TON</span></div>
-                    <div class="plan-stats"><span>⚡ ${p.hashrate} H/s</span><span>📅 ${p.daily}</span></div>
+                    <div class="plan-header"><span class="plan-name">${p.name}</span><span class="plan-price">${num(p.price, 0)} TON</span></div>
+                    <div class="plan-stats"><span>⚡ ${num(p.hashrate, 0)} H/s</span><span>📅 ${p.daily}</span></div>
                     <button class="buy-btn" onclick="buyPlan('${p.id}')">Buy Now</button>
                 </div>`).join('');
         }
+        
         function buyPlan(id) {
             const plan = SETTINGS.plans.find(p => p.id === id);
             if (!plan) return;
-            if (userData.tonBalance < plan.price) return showToast('❌ Not enough TON!');
-            if (confirm('Buy ' + plan.name + ' for ' + plan.price + ' TON?')) {
-                userData.tonBalance -= plan.price; userData.hashrate += plan.hashrate;
-                userData.purchasedPlans.push(id); saveUserData(); updateAllUI();
-                showToast('✅ +' + plan.hashrate + ' H/s!');
+            if (num(userData.tonBalance, 0) < num(plan.price, 0)) return showToast('❌ Not enough TON!');
+            if (confirm('Buy ' + plan.name + ' for ' + num(plan.price, 0) + ' TON?')) {
+                userData.tonBalance = num(userData.tonBalance, 0) - num(plan.price, 0);
+                userData.hashrate = num(userData.hashrate, 10) + num(plan.hashrate, 0);
+                if (!userData.purchasedPlans) userData.purchasedPlans = [];
+                userData.purchasedPlans.push(id);
+                saveUserData(); updateAllUI();
+                showToast('✅ +' + num(plan.hashrate, 0) + ' H/s!');
             }
         }
         
-        // --- Wallet / Withdraw / Deposit ---
         function submitWithdraw() {
             const addr = document.getElementById('withdrawAddress').value.trim();
             const amt = parseFloat(document.getElementById('withdrawAmount').value);
             if (!addr) return showToast('❌ Enter address!');
-            if (!amt || amt < SETTINGS.minWithdraw) return showToast('❌ Min ' + SETTINGS.minWithdraw + ' TON!');
-            if (amt > userData.tonBalance) return showToast('❌ Not enough!');
+            if (!amt || amt < num(SETTINGS.minWithdraw, 0.5)) return showToast('❌ Min ' + num(SETTINGS.minWithdraw, 0.5) + ' TON!');
+            if (amt > num(userData.tonBalance, 0)) return showToast('❌ Not enough!');
             if (confirm('Withdraw ' + amt + ' TON?')) {
-                userData.tonBalance -= amt;
+                userData.tonBalance = num(userData.tonBalance, 0) - amt;
+                if (!userData.transactions) userData.transactions = [];
                 userData.transactions.push({ type:'withdraw', amount:amt, address:addr, date:new Date().toLocaleString(), status:'pending' });
                 if (isMining) stopMining();
                 saveUserData(); updateAllUI(); renderHistory();
@@ -530,12 +559,12 @@
         }
         
         function copyDeposit() {
-            const addr = SETTINGS.depositAddress || 'UQD...YourWallet';
+            const addr = SETTINGS.depositAddress || DEFAULT_SETTINGS.depositAddress;
             navigator.clipboard.writeText(addr).then(() => showToast('📋 Copied!')).catch(() => showToast('Copy manually: ' + addr));
         }
         
         function openTonWallet() {
-            const addr = SETTINGS.depositAddress || 'UQD...YourWallet';
+            const addr = SETTINGS.depositAddress || DEFAULT_SETTINGS.depositAddress;
             window.open('https://app.tonkeeper.com/transfer/' + addr, '_blank');
         }
         
@@ -544,11 +573,9 @@
         function renderHistory() {
             const c = document.getElementById('txHistory');
             if (!c) return;
-            if (!userData.transactions || userData.transactions.length === 0) {
-                c.innerHTML = '<p style="color:#888;">No transactions</p>';
-                return;
-            }
-            c.innerHTML = userData.transactions.slice(-10).reverse().map(tx => `
+            const txs = userData.transactions || [];
+            if (txs.length === 0) { c.innerHTML = '<p style="color:#888;">No transactions</p>'; return; }
+            c.innerHTML = txs.slice(-10).reverse().map(tx => `
                 <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #2a2a4a;font-size:12px;">
                     <span>${tx.type==='withdraw'?'💸':'💰'}</span>
                     <span style="color:${tx.type==='withdraw'?'#f44336':'#4caf50'}">${tx.type==='withdraw'?'-':'+'}${tx.amount} TON</span>
@@ -559,7 +586,7 @@
         function copyRef() {
             const refLink = document.getElementById('refLink');
             if (refLink) {
-                refLink.value = 'https://t.me/TonFoxEarnBot?start=' + userData.id;
+                refLink.value = 'https://t.me/TonFoxEarnBot?start=' + (userData.id || 'unknown');
                 refLink.select();
                 document.execCommand('copy');
                 showToast('📋 Copied!');
