@@ -123,7 +123,6 @@
                 <div class="mining-stats">
                     <div class="mining-stat"><div class="label">⚡ Power</div><div class="value" id="hashrateDisplay">10 H/s</div></div>
                     <div class="mining-stat"><div class="label">📅 Today</div><div class="value orange" id="todayEarnedDisplay">0.0000000</div></div>
-                    <div class="mining-stat"><div class="label">⏱️ Session</div><div class="value" id="miningTimer">00:00:00</div></div>
                 </div>
                 <div class="mining-bar-container"><div class="mining-bar" id="miningBar"></div></div>
                 <div style="display:flex; justify-content:space-between; font-size:12px; color:#888; margin-bottom:10px;">
@@ -238,7 +237,7 @@
 
     <script>
         // ============================================
-        // FOXEARN - NO BLINKING, UPDATED WALLET
+        // FOXEARN - FIXED FLICKER + REMOVED TIMER
         // ============================================
         
         function num(val, fallback) {
@@ -349,11 +348,6 @@
                         const dailyTarget = hashrate * miningSpeed;
                         const progress = Math.min((todayDisplay / dailyTarget) * 100, 100);
                         document.getElementById('miningBar').style.width = progress + '%';
-                    }
-                    const timerEl = document.getElementById('miningTimer');
-                    if (timerEl) {
-                        let totalSecs = miningSeconds + Math.floor((Date.now() - (userData.lastMiningTimestamp || Date.now())) / 1000);
-                        timerEl.innerText = String(Math.floor(totalSecs/3600)).padStart(2,'0')+':'+String(Math.floor((totalSecs%3600)/60)).padStart(2,'0')+':'+String(totalSecs%60).padStart(2,'0');
                     }
                 }
             }, 1000);
@@ -536,7 +530,7 @@
         
         function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = String(val); }
         
-        // ---------- REWARDED ADS (NO BLINKING) ----------
+        // ---------- REWARDED ADS ----------
         function grantAdReward() {
             const reward = num(SETTINGS.adReward, 0.01);
             userData.tonBalance = num(userData.tonBalance, 0) + reward;
@@ -648,7 +642,7 @@
             }
         }
         
-        // WALLET with new options
+        // WALLET
         function submitWithdraw() {
             const addr = document.getElementById('withdrawAddress').value.trim();
             const amt = parseFloat(document.getElementById('withdrawAmount').value);
